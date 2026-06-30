@@ -10,27 +10,26 @@ const AdminLogin = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+ // Update the handleLogin function in AdminLogin.tsx
+const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    try {
-      const res = await axios.post(`${BASE_URL}/api/admin/login`, {
-        email,
-        password,
-      });
+  try {
+    const res = await axios.post(`${BASE_URL}/api/admin/login`, {
+      email,
+      password,
+    });
 
-      // ✅ store token
-      localStorage.setItem("token", res.data.token);
+    localStorage.setItem("token", res.data.token);
+    alert("Login successful ✅");
+    
+    // Redirect to admin categories
+    window.location.href = "/admin-categories";
 
-      alert("Login successful ✅");
-
-      // ✅ redirect to dashboard
-      window.location.href = "/contacts";
-
-    } catch (err: any) {
-      alert(err.response?.data?.message || "Login failed ❌");
-    }
-  };
+  } catch (err: any) {
+    alert(err.response?.data?.message || "Login failed ❌");
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f4f6f9]">

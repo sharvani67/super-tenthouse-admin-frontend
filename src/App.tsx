@@ -13,6 +13,7 @@ import WhatsAppFloat from "./WhatsAppFloat";
 import Login from "./pages/Login";
 import ChangePassword from "./pages/ForgotPassword";
 import ProtectedRoute from "./test/ProtectedRoute";
+import AdminCategories from "./pages/AdminCategories";
 
 
 const queryClient = new QueryClient();
@@ -38,7 +39,7 @@ const App = () => (
             <Route path="/" element={<Login />} />
             
             {/* Admin Blog Management - Protected */}
-            
+             <Route path="/admin-categories" element={<AdminCategories />} />
 
 
 
