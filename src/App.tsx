@@ -14,6 +14,7 @@ import Login from "./pages/Login";
 import ChangePassword from "./pages/ForgotPassword";
 import ProtectedRoute from "./test/ProtectedRoute";
 import AdminCategories from "./pages/AdminCategories";
+import AdminUsersProfile from "./pages/UserProfiles";
 
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
             
             {/* Admin Blog Management - Protected */}
              <Route path="/admin-categories" element={<AdminCategories />} />
+             <Route path="/users" element={<AdminUsersProfile />} />
 
 
 
