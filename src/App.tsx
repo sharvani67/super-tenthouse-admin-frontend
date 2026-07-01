@@ -15,6 +15,7 @@ import ChangePassword from "./pages/ForgotPassword";
 import ProtectedRoute from "./test/ProtectedRoute";
 import AdminCategories from "./pages/AdminCategories";
 import AdminUsersProfile from "./pages/UserProfiles";
+import AdminProducts from "./pages/AdminProducts";
 // import AdminDashboard from "./components/AdminDashboard"
 // import ProfileSettings from "./components/ProfileSettings";
 
@@ -43,6 +44,7 @@ const App = () => (
             
             {/* Admin Blog Management - Protected */}
              <Route path="/admin-categories" element={<AdminCategories />} />
+              <Route path="/admin-products" element={<AdminProducts />} />
              <Route path="/users" element={<AdminUsersProfile />} />
              {/* <Route path="/dashboard" element={<AdminDashboard />} /> */}
               {/* <Route path="/profile" element={<ProfileSettings />} /> */}
