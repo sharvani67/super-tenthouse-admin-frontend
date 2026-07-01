@@ -44,7 +44,7 @@ const ForgotPassword = () => {
       });
 
       alert("Password reset successful");
-      window.location.href = "/admin";
+      window.location.href = "/";
     } catch (err: any) {
       alert(err.response?.data?.message);
     }
@@ -71,8 +71,11 @@ const ForgotPassword = () => {
                 className="w-full px-4 py-2 border rounded-lg"
                 onChange={(e) => setEmail(e.target.value)}
               />
-              <button onClick={sendOtp} className="w-full bg-blue-500 text-white py-2 rounded-lg">
-                Send OTP
+              <button 
+                  onClick={sendOtp} 
+                  className="w-full bg-[#0c2d67] hover:bg-[#1a3d77] text-white border-0 shadow-lg hover:scale-105 transition py-2 rounded-lg font-semibold"
+                >
+                  Send OTP
               </button>
             </>
           )}
@@ -85,7 +88,10 @@ const ForgotPassword = () => {
                 className="w-full px-4 py-2 border rounded-lg"
                 onChange={(e) => setOtp(e.target.value)}
               />
-              <button onClick={verifyOtp} className="w-full bg-green-500 text-white py-2 rounded-lg">
+              <button 
+                onClick={verifyOtp} 
+                className="w-full bg-[#0c2d67] hover:bg-[#1a3d77] text-white border-0 shadow-lg hover:scale-105 transition py-2 rounded-lg font-semibold"
+              >
                 Verify OTP
               </button>
             </>
@@ -136,11 +142,11 @@ const ForgotPassword = () => {
     </div>
 
     {/* BUTTON */}
-    <button
-      onClick={resetPassword}
-      className="w-full bg-purple-500 text-white py-2 rounded-lg font-semibold"
-    >
-      Reset Password
+   <button
+        onClick={resetPassword}
+        className="w-full bg-[#0c2d67] hover:bg-[#1a3d77] text-white border-0 shadow-lg hover:scale-105 transition py-2 rounded-lg font-semibold"
+      >
+        Reset Password
     </button>
   </>
 )}

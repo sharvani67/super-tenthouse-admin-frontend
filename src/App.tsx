@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Layout from "./components/Layout";
-import AdminLayout from "./components/AdminLayout"; // 👈 NEW
+import AdminLayout from "./components/AdminLayout"; 
 import ScrollToTop from "./components/ScrollToTop";
 import NotFound from "./pages/NotFound";
 import WhatsAppFloat from "./WhatsAppFloat";
@@ -15,6 +15,8 @@ import ChangePassword from "./pages/ForgotPassword";
 import ProtectedRoute from "./test/ProtectedRoute";
 import AdminCategories from "./pages/AdminCategories";
 import AdminUsersProfile from "./pages/UserProfiles";
+import AdminDashboard from "./components/AdminDashboard"
+import ProfileSettings from "./components/ProfileSettings";
 
 
 const queryClient = new QueryClient();
@@ -42,7 +44,8 @@ const App = () => (
             {/* Admin Blog Management - Protected */}
              <Route path="/admin-categories" element={<AdminCategories />} />
              <Route path="/users" element={<AdminUsersProfile />} />
-
+             <Route path="/dashboard" element={<AdminDashboard />} />
+              <Route path="/profile" element={<ProfileSettings />} />
 
 
 

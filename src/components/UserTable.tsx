@@ -58,13 +58,13 @@ const UsersTable: React.FC<UsersTableProps> = ({
             </div>
 
             {/* Add Button */}
-            <button
+            {/* <button
               onClick={onAdd}
               className="flex items-center justify-center gap-2 px-4 py-2 bg-[#0c2d67] text-white rounded-lg hover:bg-[#1a3f7a] transition-colors"
             >
               <Plus size={18} />
               <span>Add User</span>
-            </button>
+            </button> */}
           </div>
         </div>
       </div>

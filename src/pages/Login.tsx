@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import logo from '@/assets/logo.jpeg';
+import logo from '@/assets/iiiqbetslogo.png';
 import axios from "axios";
 import BASE_URL from "@/Config/Api";
 import { Eye, EyeOff } from "lucide-react";
@@ -107,7 +107,7 @@ const handleLogin = async (e: React.FormEvent) => {
           {/* BUTTON */}
           <button
             type="submit"
-              className="w-full hidden sm:inline-flex justify-center items-center bg-gradient-to-r from-pink-500 via-yellow-400 to-blue-500 text-white border-0 shadow-lg hover:scale-105 transition py-2 rounded-lg font-semibold"
+            className="w-full hidden sm:inline-flex justify-center items-center bg-[#0c2d67] text-white border-0 shadow-lg hover:bg-[#1a3d77] transition py-2 rounded-lg font-semibold"
           >
             Login
           </button>

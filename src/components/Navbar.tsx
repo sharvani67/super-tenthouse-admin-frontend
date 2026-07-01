@@ -10,7 +10,7 @@ import {
   X,
   ChevronDown
 } from 'lucide-react';
-import logo from '@/assets/logo.jpeg';
+import logo from '@/assets/iiiqbetslogo.png';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -35,8 +35,14 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center space-x-3">
-            <img src={logo} alt="Logo" className="h-10 w-10 object-contain" />
-            <span className="text-xl font-bold">Admin Panel</span>
+            <div className="bg-white/10 p-1 rounded-lg shadow-lg shadow-black/20 backdrop-blur-sm">
+              <img 
+                src={logo} 
+                alt="Logo" 
+                className="h-10 w-10 object-contain drop-shadow-lg filter brightness-0 invert" 
+              />
+            </div>
+            <span className="text-xl font-bold drop-shadow-lg">Admin Panel</span>
           </div>
 
           {/* Desktop Navigation */}
@@ -58,7 +64,7 @@ const Navbar = () => {
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors"
               >
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shadow-lg">
                   <span className="font-semibold">A</span>
                 </div>
                 <ChevronDown size={16} />
