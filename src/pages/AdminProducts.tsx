@@ -7,36 +7,41 @@ import ProductFormModal from "@/components/ProductFormModal";
 
 export interface Product {
   id: number;
-  category: string;
+  product_category_id: number;
+  category_id: number;
+  category_name: string;
   product_name: string;
   material: string;
   color: string;
   available_stock: number;
   rating: number;
+  price: number;
   original_price: number;
   discount: number;
   sale_price: number;
   description: string;
+  product_description: string;
   dimensions: string;
+  product_code: string;
+  product_brand: string;
+  weight: string;
+  specifications: string;
+  warranty: string;
+  care_instructions: string;
+  is_active: number;
+  images?: string[];
 }
 
 const AdminProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] =
-    useState<Product | null>(null);
-
-  const [formLoading, setFormLoading] =
-    useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [formLoading, setFormLoading] = useState(false);
 
   const fetchProducts = async () => {
     try {
-      const res = await axios.get(
-        `${BASE_URL}/api/products`
-      );
-
+      const res = await axios.get(`${BASE_URL}/api/products`);
       setProducts(res.data);
     } catch (err) {
       console.log(err);
@@ -50,84 +55,59 @@ const AdminProducts = () => {
     fetchProducts();
   }, []);
 
-  const handleAddProduct = async (
-    formData: FormData
-  ) => {
+  const handleAddProduct = async (formData: FormData) => {
     try {
       setFormLoading(true);
 
-      await axios.post(
-        `${BASE_URL}/api/products`,
-        formData,
-        {
-          headers: {
-            "Content-Type":
-              "multipart/form-data",
-          },
-        }
-      );
+      await axios.post(`${BASE_URL}/api/products`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       await fetchProducts();
-
       setIsModalOpen(false);
-
       alert("Product Added Successfully");
-    } catch (err) {
+    } catch (err: any) {
       console.log(err);
-      alert("Failed to add product");
+      alert(err.response?.data?.error || "Failed to add product");
     } finally {
       setFormLoading(false);
     }
   };
 
-  const handleEditProduct = async (
-    formData: FormData
-  ) => {
+  const handleEditProduct = async (formData: FormData) => {
     if (!editingProduct) return;
 
     try {
       setFormLoading(true);
 
-      await axios.put(
-        `${BASE_URL}/api/products/${editingProduct.id}`,
+      await axios.put(`${BASE_URL}/api/products/${editingProduct.id}`, 
         Object.fromEntries(formData)
       );
 
       await fetchProducts();
-
       setEditingProduct(null);
       setIsModalOpen(false);
-
       alert("Product Updated Successfully");
-    } catch (err) {
+    } catch (err: any) {
       console.log(err);
-      alert("Failed to update product");
+      alert(err.response?.data?.error || "Failed to update product");
     } finally {
       setFormLoading(false);
     }
   };
 
-  const handleDeleteProduct = async (
-    id: number
-  ) => {
-    if (
-      !window.confirm(
-        "Are you sure want to delete?"
-      )
-    )
-      return;
+  const handleDeleteProduct = async (id: number) => {
+    if (!window.confirm("Are you sure want to delete?")) return;
 
     try {
-      await axios.delete(
-        `${BASE_URL}/api/products/${id}`
-      );
-
+      await axios.delete(`${BASE_URL}/api/products/${id}`);
       await fetchProducts();
-
       alert("Deleted Successfully");
-    } catch (err) {
+    } catch (err: any) {
       console.log(err);
-      alert("Delete failed");
+      alert(err.response?.data?.error || "Delete failed");
     }
   };
 
@@ -138,13 +118,8 @@ const AdminProducts = () => {
       <div className="max-w-7xl mx-auto p-6">
         <div className="flex justify-between mb-5">
           <div>
-            <h1 className="text-2xl font-bold">
-              Products
-            </h1>
-
-            <p className="text-gray-500">
-              Manage Products
-            </p>
+            <h1 className="text-2xl font-bold">Products</h1>
+            <p className="text-gray-500">Manage Products</p>
           </div>
         </div>
 
@@ -168,11 +143,7 @@ const AdminProducts = () => {
             setIsModalOpen(false);
             setEditingProduct(null);
           }}
-          onSubmit={
-            editingProduct
-              ? handleEditProduct
-              : handleAddProduct
-          }
+          onSubmit={editingProduct ? handleEditProduct : handleAddProduct}
           initialData={editingProduct}
           loading={formLoading}
         />

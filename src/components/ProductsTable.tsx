@@ -1,13 +1,9 @@
 import React, { useState } from "react";
-import {
-  Edit,
-  Trash2,
-  Plus,
-  Search,
-} from "lucide-react";
+import { Edit, Trash2, Plus, Search } from "lucide-react";
 
 export interface Product {
   id: number;
+  product_category_id: number;
   category_id: number;
   category_name: string;
   product_name: string;
@@ -15,11 +11,21 @@ export interface Product {
   color: string;
   available_stock: number;
   rating: number;
+  price: number;
   original_price: number;
   discount: number;
   sale_price: number;
   description: string;
+  product_description: string;
   dimensions: string;
+  product_code: string;
+  product_brand: string;
+  weight: string;
+  specifications: string;
+  warranty: string;
+  care_instructions: string;
+  is_active: number;
+  images?: string[];
 }
 
 interface ProductsTableProps {
@@ -30,63 +36,52 @@ interface ProductsTableProps {
   loading?: boolean;
 }
 
-const ProductsTable: React.FC<
-  ProductsTableProps
-> = ({
+const ProductsTable: React.FC<ProductsTableProps> = ({
   products,
   onEdit,
   onDelete,
   onAdd,
   loading = false,
 }) => {
-  const [searchTerm, setSearchTerm] =
-    useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
- const filteredProducts = products.filter(
-  (product) =>
-    product.product_name
-      ?.toLowerCase()
-      .includes(searchTerm.toLowerCase()) ||
-    product.category_name
-      ?.toLowerCase()
-      .includes(searchTerm.toLowerCase())
-);
+  const filteredProducts = products.filter(
+    (product) =>
+      product.product_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.category_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.product_brand?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Calculate sale price
+  const calculateSalePrice = (price: number, discount: number) => {
+    if (!discount || discount === 0) return price;
+    return price - (price * discount) / 100;
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
       {/* Header */}
-
       <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
         <div className="flex flex-col sm:flex-row justify-between gap-4">
-
           <div>
-            <h3 className="text-lg font-semibold text-gray-800">
-              Products
-            </h3>
-
+            <h3 className="text-lg font-semibold text-gray-800">Products</h3>
             <p className="text-sm text-gray-500">
               Total: {products.length} Products
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
-
             <div className="relative">
               <Search
                 size={18}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
               />
-
               <input
                 type="text"
                 placeholder="Search products..."
                 className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0c2d67]"
                 value={searchTerm}
-                onChange={(e) =>
-                  setSearchTerm(
-                    e.target.value
-                  )
-                }
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
 
@@ -102,184 +97,90 @@ const ProductsTable: React.FC<
       </div>
 
       {/* Table */}
-
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1200px]">
-
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left">
-                ID
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                Product
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                Category
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                Material
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                Color
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                Stock
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                Rating
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                Original Price
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                Discount
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                Sale Price
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                Actions
-              </th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">ID</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Product</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Category</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Brand</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Material</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Color</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Stock</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Price</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Discount</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Sale Price</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Actions</th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td
-                  colSpan={11}
-                  className="text-center py-10"
-                >
+                <td colSpan={11} className="text-center py-10">
                   Loading Products...
                 </td>
               </tr>
-            ) : filteredProducts.length ===
-              0 ? (
+            ) : filteredProducts.length === 0 ? (
               <tr>
-                <td
-                  colSpan={11}
-                  className="text-center py-10"
-                >
+                <td colSpan={11} className="text-center py-10">
                   No Products Found
                 </td>
               </tr>
             ) : (
-              filteredProducts.map(
-                (product) => (
-                  <tr
-                    key={product.id}
-                    className="hover:bg-gray-50"
-                  >
-                    <td className="px-4 py-3">
-                      #{product.id}
+              filteredProducts.map((product) => {
+                const salePrice = calculateSalePrice(product.price, product.discount);
+                return (
+                  <tr key={product.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm">#{product.id}</td>
+                    <td className="px-4 py-3 font-medium text-sm">
+                      {product.product_name}
                     </td>
-
-                    <td className="px-4 py-3 font-medium">
-                      {
-                        product.product_name
-                      }
+                    <td className="px-4 py-3 text-sm">{product.category_name}</td>
+                    <td className="px-4 py-3 text-sm">{product.product_brand || '-'}</td>
+                    <td className="px-4 py-3 text-sm">{product.material || '-'}</td>
+                    <td className="px-4 py-3 text-sm">{product.color || '-'}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={product.available_stock > 0 ? 'text-green-600' : 'text-red-600'}>
+                        {product.available_stock}
+                      </span>
                     </td>
-
-                    <td className="px-4 py-3">
-                      {product.category_name}
+                    <td className="px-4 py-3 text-sm">₹{product.price}</td>
+                    <td className="px-4 py-3 text-sm">{product.discount}%</td>
+                    <td className="px-4 py-3 font-semibold text-green-600 text-sm">
+                      ₹{salePrice.toFixed(2)}
                     </td>
-
-                    <td className="px-4 py-3">
-                      {product.material}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {product.color}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {
-                        product.available_stock
-                      }
-                    </td>
-
-                    <td className="px-4 py-3">
-                      ⭐ {product.rating}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      ₹
-                      {
-                        product.original_price
-                      }
-                    </td>
-
-                    <td className="px-4 py-3">
-                      ₹
-                      {product.discount}
-                    </td>
-
-                    <td className="px-4 py-3 font-semibold text-green-600">
-                      ₹
-                      {
-                        product.sale_price
-                      }
-                    </td>
-
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-
                         <button
-                          onClick={() =>
-                            onEdit(
-                              product
-                            )
-                          }
+                          onClick={() => onEdit(product)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
                         >
-                          <Edit
-                            size={18}
-                          />
+                          <Edit size={18} />
                         </button>
-
                         <button
                           onClick={() => {
-                            if (
-                              window.confirm(
-                                "Delete Product?"
-                              )
-                            ) {
-                              onDelete(
-                                product.id
-                              );
+                            if (window.confirm("Delete Product?")) {
+                              onDelete(product.id);
                             }
                           }}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
                         >
-                          <Trash2
-                            size={18}
-                          />
+                          <Trash2 size={18} />
                         </button>
-
                       </div>
                     </td>
                   </tr>
-                )
-              )
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
 
       <div className="px-6 py-3 border-t bg-gray-50 text-sm text-gray-500">
-        Showing {filteredProducts.length} of{" "}
-        {products.length} products
+        Showing {filteredProducts.length} of {products.length} products
       </div>
     </div>
   );
