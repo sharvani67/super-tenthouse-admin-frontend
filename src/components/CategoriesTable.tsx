@@ -152,7 +152,9 @@
 
 // export default CategoriesTable;
 
+
 import React, { useState } from 'react';
+import { Edit, Trash2, Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import BASE_URL from '@/Config/Api';
 
 interface Category {
@@ -171,11 +173,6 @@ interface CategoriesTableProps {
   loading: boolean;
 }
 
-// SVG Placeholder as data URI (no external dependencies)
-const PLACEHOLDER_SVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50'%3E%3Crect width='50' height='50' fill='%23f3f4f6'/%3E%3Crect x='5' y='5' width='40' height='40' fill='%23e5e7eb' rx='4'/%3E%3Ctext x='25' y='28' text-anchor='middle' fill='%239ca3af' font-size='8' font-family='sans-serif'%3ENo%20Img%3C/text%3E%3C/svg%3E`;
-
-const ERROR_PLACEHOLDER_SVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50'%3E%3Crect width='50' height='50' fill='%23fef2f2'/%3E%3Crect x='5' y='5' width='40' height='40' fill='%23fecaca' rx='4'/%3E%3Ctext x='25' y='28' text-anchor='middle' fill='%23dc2626' font-size='8' font-family='sans-serif'%3EError%3C/text%3E%3C/svg%3E`;
-
 const CategoriesTable: React.FC<CategoriesTableProps> = ({
   categories,
   onEdit,
@@ -183,7 +180,10 @@ const CategoriesTable: React.FC<CategoriesTableProps> = ({
   onAdd,
   loading,
 }) => {
+  const [searchTerm, setSearchTerm] = useState('');
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Helper function to get the correct image source
   const getImageSrc = (imageData?: string) => {
@@ -217,28 +217,82 @@ const CategoriesTable: React.FC<CategoriesTableProps> = ({
     setImageErrors(prev => ({ ...prev, [categoryId]: true }));
   };
 
+  // Filter categories based on search term
+  const filteredCategories = categories.filter(category =>
+    category.category_name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Pagination logic
+  const totalItems = filteredCategories.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const currentItems = filteredCategories.slice(startIndex, endIndex);
+
+  // Reset to first page when search changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  // Handle page change
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  // Handle items per page change
+  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setItemsPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0c2d67]"></div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white shadow-md rounded-lg overflow-hidden">
-      <div className="flex justify-between items-center p-4 border-b">
-        <h2 className="text-lg font-semibold">Categories</h2>
-        <button
-          onClick={onAdd}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-        >
-          Add Category
-        </button>
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800">Categories</h3>
+            <p className="text-sm text-gray-500">
+              Total: {categories.length} categories
+            </p>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <input
+                type="text"
+                placeholder="Search categories..."
+                className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0c2d67] w-full sm:w-64"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {/* Add Button */}
+            <button
+              onClick={onAdd}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-[#0c2d67] text-white rounded-lg hover:bg-[#1a3f7a] transition-colors"
+            >
+              <Plus size={18} />
+              <span>Add Category</span>
+            </button>
+          </div>
+        </div>
       </div>
 
+      {/* Table */}
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -258,36 +312,31 @@ const CategoriesTable: React.FC<CategoriesTableProps> = ({
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {categories.length === 0 ? (
+          <tbody className="divide-y divide-gray-200">
+            {currentItems.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                  No categories found
+                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                  {searchTerm ? 'No categories found matching your search' : 'No categories available'}
                 </td>
               </tr>
             ) : (
-              categories.map((category) => {
+              currentItems.map((category) => {
                 const imageSrc = getImageSrc(category.image);
                 const hasError = imageErrors[category.id];
                 
                 return (
-                  <tr key={category.id} className="hover:bg-gray-50">
+                  <tr key={category.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       {imageSrc && !hasError ? (
                         <img
                           src={imageSrc}
                           alt={category.category_name}
-                          className="h-12 w-12 object-cover rounded-lg border border-gray-200"
-                          onError={(e) => {
-                            handleImageError(category.id);
-                            console.error(`Image failed to load for category ${category.id}:`, category.image);
-                            // Use SVG placeholder on error
-                            (e.target as HTMLImageElement).src = ERROR_PLACEHOLDER_SVG;
-                          }}
+                          className="h-14 w-14 object-cover rounded-lg border border-gray-200"
+                          onError={() => handleImageError(category.id)}
                         />
                       ) : (
-                        <div className="h-12 w-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs border border-gray-200">
-                          {hasError ? 'Error' : 'No img'}
+                        <div className="h-14 w-14 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs border border-gray-200">
+                          No img
                         </div>
                       )}
                     </td>
@@ -303,22 +352,30 @@ const CategoriesTable: React.FC<CategoriesTableProps> = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-500">
-                        {category.created_at ? new Date(category.created_at).toLocaleDateString() : 'N/A'}
+                        {category.created_at ? new Date(category.created_at).toLocaleDateString() : '-'}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => onEdit(category)}
-                        className="text-blue-600 hover:text-blue-900 mr-4 transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => onDelete(category.id)}
-                        className="text-red-600 hover:text-red-900 transition-colors"
-                      >
-                        Delete
-                      </button>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => onEdit(category)}
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Are you sure you want to delete "${category.category_name}"?`)) {
+                              onDelete(category.id);
+                            }
+                          }}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -326,6 +383,87 @@ const CategoriesTable: React.FC<CategoriesTableProps> = ({
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination Footer */}
+      <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+          {/* Left side - Showing info */}
+          <div className="text-sm text-gray-500">
+            Showing {totalItems === 0 ? 0 : startIndex + 1} to {endIndex} of {totalItems} categories
+          </div>
+
+          {/* Right side - Pagination controls */}
+          <div className="flex items-center gap-4">
+            {/* Items per page selector */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-500">Show:</label>
+              <select
+                value={itemsPerPage}
+                onChange={handleItemsPerPageChange}
+                className="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#0c2d67] bg-white"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+
+            {/* Page navigation */}
+            {totalPages > 0 && (
+              <div className="flex items-center gap-1">
+                {/* Previous button */}
+                <button
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="p-1.5 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+
+                {/* Page numbers */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => goToPage(pageNum)}
+                        className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                          currentPage === pageNum
+                            ? 'bg-[#0c2d67] text-white'
+                            : 'hover:bg-gray-200 text-gray-700'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Next button */}
+                <button
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="p-1.5 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
