@@ -1,3 +1,4 @@
+// AdminProducts.tsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import BASE_URL from "@/Config/Api";
@@ -58,13 +59,11 @@ const AdminProducts = () => {
   const handleAddProduct = async (formData: FormData) => {
     try {
       setFormLoading(true);
-
       await axios.post(`${BASE_URL}/api/products`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
-
       await fetchProducts();
       setIsModalOpen(false);
       alert("Product Added Successfully");
@@ -81,11 +80,11 @@ const AdminProducts = () => {
 
     try {
       setFormLoading(true);
-
-      await axios.put(`${BASE_URL}/api/products/${editingProduct.id}`, 
-        Object.fromEntries(formData)
-      );
-
+      await axios.put(`${BASE_URL}/api/products/${editingProduct.id}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
       await fetchProducts();
       setEditingProduct(null);
       setIsModalOpen(false);
@@ -99,12 +98,12 @@ const AdminProducts = () => {
   };
 
   const handleDeleteProduct = async (id: number) => {
-    if (!window.confirm("Are you sure want to delete?")) return;
+    if (!window.confirm("Are you sure you want to delete this product?")) return;
 
     try {
       await axios.delete(`${BASE_URL}/api/products/${id}`);
       await fetchProducts();
-      alert("Deleted Successfully");
+      alert("Product Deleted Successfully");
     } catch (err: any) {
       console.log(err);
       alert(err.response?.data?.error || "Delete failed");
@@ -116,11 +115,9 @@ const AdminProducts = () => {
       <Navbar />
 
       <div className="max-w-7xl mx-auto p-6">
-        <div className="flex justify-between mb-5">
-          <div>
-            <h1 className="text-2xl font-bold">Products</h1>
-            <p className="text-gray-500">Manage Products</p>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Products</h1>
+          <p className="text-gray-500">Manage your product inventory</p>
         </div>
 
         <ProductsTable

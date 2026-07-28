@@ -1,5 +1,6 @@
+// ProductFormModal.tsx
 import React, { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { X, Image, Upload, Trash2 } from "lucide-react";
 import axios from "axios";
 import BASE_URL from "@/Config/Api";
 
@@ -19,13 +20,13 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
   loading = false,
 }) => {
   const [form, setForm] = useState({
-    product_category_id: "", // Changed from category_id
+    product_category_id: "",
     product_name: "",
     material: "",
     color: "",
     available_stock: "",
     rating: "",
-    price: "", // Changed from original_price
+    price: "",
     discount: "",
     description: "",
     dimensions: "",
@@ -39,6 +40,8 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
   });
 
   const [images, setImages] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
 
   useEffect(() => {
@@ -74,8 +77,72 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
         care_instructions: initialData.care_instructions || "",
         is_active: initialData.is_active !== undefined ? String(initialData.is_active) : "1",
       });
+
+      // Set existing images
+      if (initialData.images && initialData.images.length > 0) {
+        setExistingImages(initialData.images);
+        setImagePreviews(initialData.images.map((img: string) => `${BASE_URL}/${img}`));
+      } else {
+        setExistingImages([]);
+        setImagePreviews([]);
+      }
+    } else {
+      // Reset form for new product
+      setForm({
+        product_category_id: "",
+        product_name: "",
+        material: "",
+        color: "",
+        available_stock: "",
+        rating: "",
+        price: "",
+        discount: "",
+        description: "",
+        dimensions: "",
+        product_code: "",
+        product_brand: "",
+        weight: "",
+        specifications: "",
+        warranty: "",
+        care_instructions: "",
+        is_active: "1",
+      });
+      setImages([]);
+      setExistingImages([]);
+      setImagePreviews([]);
     }
   }, [initialData]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setImages(files);
+      
+      // Create previews for new images
+      const previews = files.map(file => URL.createObjectURL(file));
+      setImagePreviews([...imagePreviews, ...previews]);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    // Remove from previews
+    const newPreviews = [...imagePreviews];
+    newPreviews.splice(index, 1);
+    setImagePreviews(newPreviews);
+
+    // If it's a new image, remove from files array
+    if (index < images.length) {
+      const newImages = [...images];
+      newImages.splice(index, 1);
+      setImages(newImages);
+    } else {
+      // If it's an existing image, remove from existing images
+      const existingIndex = index - images.length;
+      const newExisting = [...existingImages];
+      newExisting.splice(existingIndex, 1);
+      setExistingImages(newExisting);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +156,12 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
       }
     });
 
-    // Append images
+    // Append existing images paths
+    existingImages.forEach((imagePath) => {
+      formData.append("existing_images", imagePath);
+    });
+
+    // Append new images
     images.forEach((image) => {
       formData.append("images", image);
     });
@@ -100,212 +172,346 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-4xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-semibold">
-            {initialData ? "Edit Product" : "Add Product"}
-          </h3>
-          <button onClick={onClose}>
-            <X size={22} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white z-10 px-6 py-4 border-b border-gray-200 flex justify-between items-center rounded-t-2xl">
+          <div>
+            <h3 className="text-xl font-bold text-gray-900">
+              {initialData ? "Edit Product" : "Add New Product"}
+            </h3>
+            <p className="text-sm text-gray-500">
+              {initialData ? "Update product details" : "Create a new product"}
+            </p>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
+          >
+            <X size={22} className="text-gray-500" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Category Dropdown */}
-          <select
-            className="border p-2 rounded-lg"
-            value={form.product_category_id}
-            onChange={(e) =>
-              setForm({ ...form, product_category_id: e.target.value })
-            }
-            required
-          >
-            <option value="">Select Category</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.category_name}
-              </option>
-            ))}
-          </select>
-
-          {/* Product Name */}
-          <input
-            placeholder="Product Name"
-            className="border p-2 rounded-lg"
-            value={form.product_name}
-            onChange={(e) => setForm({ ...form, product_name: e.target.value })}
-            required
-          />
-
-          {/* Product Code */}
-          <input
-            placeholder="Product Code (SKU)"
-            className="border p-2 rounded-lg"
-            value={form.product_code}
-            onChange={(e) => setForm({ ...form, product_code: e.target.value })}
-          />
-
-          {/* Product Brand */}
-          <input
-            placeholder="Brand"
-            className="border p-2 rounded-lg"
-            value={form.product_brand}
-            onChange={(e) => setForm({ ...form, product_brand: e.target.value })}
-          />
-
-          {/* Material */}
-          <input
-            placeholder="Material"
-            className="border p-2 rounded-lg"
-            value={form.material}
-            onChange={(e) => setForm({ ...form, material: e.target.value })}
-          />
-
-          {/* Color */}
-          <input
-            placeholder="Color"
-            className="border p-2 rounded-lg"
-            value={form.color}
-            onChange={(e) => setForm({ ...form, color: e.target.value })}
-          />
-
-          {/* Price (renamed from original_price) */}
-          <input
-            type="number"
-            step="0.01"
-            placeholder="Price"
-            className="border p-2 rounded-lg"
-            value={form.price}
-            onChange={(e) => setForm({ ...form, price: e.target.value })}
-            required
-          />
-
-          {/* Discount */}
-          <input
-            type="number"
-            step="0.01"
-            placeholder="Discount (%)"
-            className="border p-2 rounded-lg"
-            value={form.discount}
-            onChange={(e) => setForm({ ...form, discount: e.target.value })}
-          />
-
-          {/* Available Stock */}
-          <input
-            type="number"
-            placeholder="Stock"
-            className="border p-2 rounded-lg"
-            value={form.available_stock}
-            onChange={(e) => setForm({ ...form, available_stock: e.target.value })}
-            required
-          />
-
-          {/* Weight */}
-          <input
-            placeholder="Weight (kg)"
-            className="border p-2 rounded-lg"
-            value={form.weight}
-            onChange={(e) => setForm({ ...form, weight: e.target.value })}
-          />
-
-          {/* Dimensions */}
-          <input
-            placeholder="Dimensions (LxWxH)"
-            className="border p-2 rounded-lg md:col-span-2"
-            value={form.dimensions}
-            onChange={(e) => setForm({ ...form, dimensions: e.target.value })}
-          />
-
-          {/* Specifications */}
-          <textarea
-            rows={2}
-            placeholder="Specifications (JSON format)"
-            className="border p-2 rounded-lg md:col-span-2"
-            value={form.specifications}
-            onChange={(e) => setForm({ ...form, specifications: e.target.value })}
-          />
-
-          {/* Description */}
-          <textarea
-            rows={3}
-            placeholder="Description"
-            className="border p-2 rounded-lg md:col-span-2"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
-
-          {/* Warranty */}
-          <input
-            placeholder="Warranty"
-            className="border p-2 rounded-lg"
-            value={form.warranty}
-            onChange={(e) => setForm({ ...form, warranty: e.target.value })}
-          />
-
-          {/* Care Instructions */}
-          <input
-            placeholder="Care Instructions"
-            className="border p-2 rounded-lg"
-            value={form.care_instructions}
-            onChange={(e) => setForm({ ...form, care_instructions: e.target.value })}
-          />
-
-          {/* Active Status */}
-          <div className="md:col-span-2">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={form.is_active === "1"}
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Category Dropdown */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category *
+              </label>
+              <select
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
+                value={form.product_category_id}
                 onChange={(e) =>
-                  setForm({ ...form, is_active: e.target.checked ? "1" : "0" })
+                  setForm({ ...form, product_category_id: e.target.value })
                 }
+                required
+              >
+                <option value="">Select Category</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.category_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Product Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Product Name *
+              </label>
+              <input
+                type="text"
+                placeholder="Enter product name"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
+                value={form.product_name}
+                onChange={(e) => setForm({ ...form, product_name: e.target.value })}
+                required
               />
-              <span>Active (visible to customers)</span>
-            </label>
-          </div>
+            </div>
 
-          {/* Rating (hidden or optional) */}
-          <input
-            type="hidden"
-            value={form.rating}
-            onChange={(e) => setForm({ ...form, rating: e.target.value })}
-          />
+            {/* Product Code */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Product Code (SKU)
+              </label>
+              <input
+                type="text"
+                placeholder="Enter product code"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
+                value={form.product_code}
+                onChange={(e) => setForm({ ...form, product_code: e.target.value })}
+              />
+            </div>
 
-          {/* Images Upload */}
-          <div className="md:col-span-2">
-            <label className="block mb-2 text-sm font-medium">Product Images</label>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={(e) => setImages(Array.from(e.target.files || []))}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-            />
-            {images.length > 0 && (
-              <p className="mt-2 text-sm text-gray-600">
-                {images.length} image(s) selected
-              </p>
-            )}
+            {/* Product Brand */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Brand
+              </label>
+              <input
+                type="text"
+                placeholder="Enter brand name"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
+                value={form.product_brand}
+                onChange={(e) => setForm({ ...form, product_brand: e.target.value })}
+              />
+            </div>
+
+            {/* Material */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Material
+              </label>
+              <input
+                type="text"
+                placeholder="Enter material"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
+                value={form.material}
+                onChange={(e) => setForm({ ...form, material: e.target.value })}
+              />
+            </div>
+
+            {/* Color */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Color
+              </label>
+              <input
+                type="text"
+                placeholder="Enter color"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
+                value={form.color}
+                onChange={(e) => setForm({ ...form, color: e.target.value })}
+              />
+            </div>
+
+            {/* Price */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Price (₹) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Enter price"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
+                required
+              />
+            </div>
+
+            {/* Discount */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Discount (%)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Enter discount percentage"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
+                value={form.discount}
+                onChange={(e) => setForm({ ...form, discount: e.target.value })}
+              />
+            </div>
+
+            {/* Available Stock */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Stock *
+              </label>
+              <input
+                type="number"
+                placeholder="Enter stock quantity"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
+                value={form.available_stock}
+                onChange={(e) => setForm({ ...form, available_stock: e.target.value })}
+                required
+              />
+            </div>
+
+            {/* Weight */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Weight (kg)
+              </label>
+              <input
+                type="text"
+                placeholder="Enter weight"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
+                value={form.weight}
+                onChange={(e) => setForm({ ...form, weight: e.target.value })}
+              />
+            </div>
+
+            {/* Dimensions */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Dimensions (LxWxH)
+              </label>
+              <input
+                type="text"
+                placeholder="Enter dimensions (e.g., 30x30x45 cm)"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
+                value={form.dimensions}
+                onChange={(e) => setForm({ ...form, dimensions: e.target.value })}
+              />
+            </div>
+
+            {/* Specifications */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Specifications (JSON format)
+              </label>
+              <textarea
+                rows={2}
+                placeholder='{"material": "Ceramic", "type": "Table Centerpiece"}'
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
+                value={form.specifications}
+                onChange={(e) => setForm({ ...form, specifications: e.target.value })}
+              />
+            </div>
+
+            {/* Description */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Description
+              </label>
+              <textarea
+                rows={3}
+                placeholder="Enter product description"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+              />
+            </div>
+
+            {/* Warranty */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Warranty
+              </label>
+              <input
+                type="text"
+                placeholder="Enter warranty period"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
+                value={form.warranty}
+                onChange={(e) => setForm({ ...form, warranty: e.target.value })}
+              />
+            </div>
+
+            {/* Care Instructions */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Care Instructions
+              </label>
+              <input
+                type="text"
+                placeholder="Enter care instructions"
+                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
+                value={form.care_instructions}
+                onChange={(e) => setForm({ ...form, care_instructions: e.target.value })}
+              />
+            </div>
+
+            {/* Active Status */}
+            <div className="md:col-span-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.is_active === "1"}
+                  onChange={(e) =>
+                    setForm({ ...form, is_active: e.target.checked ? "1" : "0" })
+                  }
+                  className="w-4 h-4 text-[#0c2d67] focus:ring-[#0c2d67] border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Active (visible to customers)
+                </span>
+              </label>
+            </div>
+
+            {/* Images Upload */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Product Images
+              </label>
+              
+              {/* Image Previews */}
+              {imagePreviews.length > 0 && (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-3">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={preview}
+                        alt={`Product image ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-[#0c2d67] transition-colors duration-200">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="w-full"
+                  id="image-upload"
+                />
+                <label htmlFor="image-upload" className="cursor-pointer flex flex-col items-center">
+                  <Upload size={32} className="text-gray-400 mb-2" />
+                  <span className="text-sm text-gray-500">
+                    Click to upload images (JPEG, PNG, WebP, GIF)
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    Maximum 10 images, 5MB each
+                  </span>
+                </label>
+              </div>
+              {images.length > 0 && (
+                <p className="mt-2 text-sm text-gray-600">
+                  {images.length} new image(s) selected
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Buttons */}
-          <div className="md:col-span-2 flex justify-end gap-3 mt-4">
+          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+              className="px-6 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 font-medium"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 bg-[#0c2d67] text-white rounded-lg hover:bg-[#173d79] disabled:opacity-50"
+              className="px-6 py-2.5 bg-[#0c2d67] text-white rounded-lg hover:bg-[#173d79] transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {loading ? "Saving..." : initialData ? "Update Product" : "Add Product"}
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Saving...
+                </>
+              ) : (
+                initialData ? "Update Product" : "Add Product"
+              )}
             </button>
           </div>
         </form>
