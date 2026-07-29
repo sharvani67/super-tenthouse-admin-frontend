@@ -8,7 +8,11 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronDown
+  ChevronDown,
+  Gift,
+  LayoutGrid,
+  ShoppingBag,
+  Plus
 } from 'lucide-react';
 import logo from '@/assets/iiiqbetslogo.png';
 
@@ -24,8 +28,10 @@ const Navbar = () => {
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: Home },
-    { name: 'Categories', path: '/admin-categories', icon: Package },
-    { name: 'Products', path: '/admin-products', icon: Package },
+    { name: 'Categories', path: '/admin-categories', icon: LayoutGrid },
+    { name: 'Products', path: '/admin-products', icon: ShoppingBag },
+    { name: 'Packages', path: '/admin/packages', icon: Gift }, 
+    { name: 'Add-Ons', path: '/admin-addons', icon: Plus },// Added Packages
     { name: 'Users', path: '/users', icon: Users },
   ];
 
