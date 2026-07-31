@@ -18,6 +18,7 @@ import AdminUsersProfile from "./pages/UserProfiles";
 import AdminProducts from "./pages/AdminProducts";
 import AdminPackages from "./pages/AdminPackages";
 import AdminAddons from "./pages/AdminAddons";
+import AdminOrders from "./pages/AdminOrders";
 // import AdminDashboard from "./components/AdminDashboard"
 // import ProfileSettings from "./components/ProfileSettings";
 
@@ -50,6 +51,7 @@ const App = () => (
              <Route path="/users" element={<AdminUsersProfile />} />
              <Route path="/admin/packages" element={<AdminPackages />} />
              <Route path="/admin-addons" element={<AdminAddons />} />
+              <Route path="/admin-orders" element={<AdminOrders />} />
              {/* <Route path="/dashboard" element={<AdminDashboard />} /> */}
               {/* <Route path="/profile" element={<ProfileSettings />} /> */}
 

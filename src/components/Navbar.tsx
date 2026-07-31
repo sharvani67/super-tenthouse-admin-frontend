@@ -12,7 +12,8 @@ import {
   Gift,
   LayoutGrid,
   ShoppingBag,
-  Plus
+  Plus,
+  ShoppingCart // Added for Orders
 } from 'lucide-react';
 import logo from '@/assets/iiiqbetslogo.png';
 
@@ -30,8 +31,9 @@ const Navbar = () => {
     { name: 'Dashboard', path: '/dashboard', icon: Home },
     { name: 'Categories', path: '/admin-categories', icon: LayoutGrid },
     { name: 'Products', path: '/admin-products', icon: ShoppingBag },
-    { name: 'Packages', path: '/admin/packages', icon: Gift }, 
-    { name: 'Add-Ons', path: '/admin-addons', icon: Plus },// Added Packages
+    { name: 'Packages', path: '/admin/packages', icon: Gift },
+    { name: 'Add-Ons', path: '/admin-addons', icon: Plus },
+    { name: 'Orders', path: '/admin-orders', icon: ShoppingCart }, // Added Orders
     { name: 'Users', path: '/users', icon: Users },
   ];
 
