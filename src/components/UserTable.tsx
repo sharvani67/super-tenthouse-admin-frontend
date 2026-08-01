@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Edit, Trash2, Plus, Search } from 'lucide-react';
+import { Edit, Trash2, Plus, Search, ShoppingCart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface User {
   id: number;
@@ -25,12 +26,18 @@ const UsersTable: React.FC<UsersTableProps> = ({
   loading = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate();
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.phone.includes(searchTerm)
   );
+
+  // Handle Create Order navigation
+  const handleCreateOrder = (userId: number) => {
+    navigate(`/admin/create-order/${userId}`);
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -58,13 +65,13 @@ const UsersTable: React.FC<UsersTableProps> = ({
             </div>
 
             {/* Add Button */}
-            {/* <button
+            <button
               onClick={onAdd}
               className="flex items-center justify-center gap-2 px-4 py-2 bg-[#0c2d67] text-white rounded-lg hover:bg-[#1a3f7a] transition-colors"
             >
               <Plus size={18} />
               <span>Add User</span>
-            </button> */}
+            </button>
           </div>
         </div>
       </div>
@@ -126,7 +133,18 @@ const UsersTable: React.FC<UsersTableProps> = ({
                     {user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
                   </td>
                   <td className="px-6 py-4 text-sm">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Create Order Button */}
+                      <button
+                        onClick={() => handleCreateOrder(user.id)}
+                        className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs md:text-sm flex items-center gap-1"
+                        title="Create Order"
+                      >
+                        <ShoppingCart size={14} className="inline" />
+                        <span>Order</span>
+                      </button>
+                      
+                      {/* Edit Button */}
                       <button
                         onClick={() => onEdit(user)}
                         className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -134,6 +152,8 @@ const UsersTable: React.FC<UsersTableProps> = ({
                       >
                         <Edit size={18} />
                       </button>
+                      
+                      {/* Delete Button */}
                       <button
                         onClick={() => {
                           if (window.confirm(`Are you sure you want to delete "${user.name}"?`)) {

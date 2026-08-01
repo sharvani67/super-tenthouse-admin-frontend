@@ -8,7 +8,8 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronDown
+  ChevronDown,
+  ShoppingBag
 } from 'lucide-react';
 import logo from '@/assets/iiiqbetslogo.png';
 
@@ -26,6 +27,7 @@ const Navbar = () => {
     { name: 'Dashboard', path: '/dashboard', icon: Home },
     { name: 'Categories', path: '/admin-categories', icon: Package },
     { name: 'Products', path: '/admin-products', icon: Package },
+    { name: 'Orders', path: '/admin/orders', icon: ShoppingBag },
     { name: 'Users', path: '/users', icon: Users },
   ];
 

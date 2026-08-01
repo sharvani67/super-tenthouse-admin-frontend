@@ -16,6 +16,8 @@ import ProtectedRoute from "./test/ProtectedRoute";
 import AdminCategories from "./pages/AdminCategories";
 import AdminUsersProfile from "./pages/UserProfiles";
 import AdminProducts from "./pages/AdminProducts";
+import CreateOrder from '@/components/CreateOrder';
+import OrdersList from '@/components/OrderList';
 // import AdminDashboard from "./components/AdminDashboard"
 // import ProfileSettings from "./components/ProfileSettings";
 
@@ -48,6 +50,9 @@ const App = () => (
              <Route path="/users" element={<AdminUsersProfile />} />
              {/* <Route path="/dashboard" element={<AdminDashboard />} /> */}
               {/* <Route path="/profile" element={<ProfileSettings />} /> */}
+
+              <Route path="/admin/create-order/:userId?" element={<CreateOrder />} />
+              <Route path="/admin/orders" element={<OrdersList />} />
 
 
 
