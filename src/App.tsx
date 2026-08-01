@@ -18,6 +18,9 @@ import AdminUsersProfile from "./pages/UserProfiles";
 import AdminProducts from "./pages/AdminProducts";
 import CreateOrder from '@/components/CreateOrder';
 import OrdersList from '@/components/OrderList';
+import AdminPackages from "./pages/AdminPackages";
+import AdminAddons from "./pages/AdminAddons";
+import AdminOrders from "./pages/AdminOrders";
 // import AdminDashboard from "./components/AdminDashboard"
 // import ProfileSettings from "./components/ProfileSettings";
 
@@ -48,6 +51,9 @@ const App = () => (
              <Route path="/admin-categories" element={<AdminCategories />} />
               <Route path="/admin-products" element={<AdminProducts />} />
              <Route path="/users" element={<AdminUsersProfile />} />
+             <Route path="/admin/packages" element={<AdminPackages />} />
+             <Route path="/admin-addons" element={<AdminAddons />} />
+              <Route path="/admin-orders" element={<AdminOrders />} />
              {/* <Route path="/dashboard" element={<AdminDashboard />} /> */}
               {/* <Route path="/profile" element={<ProfileSettings />} /> */}
 

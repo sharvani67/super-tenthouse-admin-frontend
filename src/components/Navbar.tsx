@@ -9,7 +9,11 @@ import {
   Menu,
   X,
   ChevronDown,
-  ShoppingBag
+  ShoppingBag,
+  Gift,
+  LayoutGrid,
+  Plus,
+  ShoppingCart // Added for Orders
 } from 'lucide-react';
 import logo from '@/assets/iiiqbetslogo.png';
 
@@ -28,6 +32,10 @@ const Navbar = () => {
     { name: 'Categories', path: '/admin-categories', icon: Package },
     { name: 'Products', path: '/admin-products', icon: Package },
     { name: 'Orders', path: '/admin/orders', icon: ShoppingBag },
+    { name: 'Categories', path: '/admin-categories', icon: LayoutGrid },
+    { name: 'Products', path: '/admin-products', icon: ShoppingBag },
+    { name: 'Packages', path: '/admin/packages', icon: Gift },
+    { name: 'Add-Ons', path: '/admin-addons', icon: Plus },
     { name: 'Users', path: '/users', icon: Users },
   ];
 
