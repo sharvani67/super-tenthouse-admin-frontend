@@ -3,51 +3,70 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import BASE_URL from '@/Config/Api';
 import { 
-  Trash2, ChevronDown, ChevronUp, FileText, Printer,
-  User, Mail, Phone, Package, ShoppingBag,
-  CheckCircle, XCircle, Clock, RefreshCw, Eye, X,
-  CreditCard
+  Trash2, Printer,
+  User, Package, ShoppingBag,
+  Eye, X,
+  CreditCard, MapPin, Calendar, Home
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
 interface OrderItem {
-  id: number;
-  order_id: number;
-  product_id: number;
-  product_name: string;
-  product_code: string;
+  id: string;
+  productId: string;
+  name: string;
+  price: number;
   quantity: number;
-  price: string | number;
-  discount: string | number;
-  subtotal: string | number;
-  created_at: string;
-  image_url?: string | null;
+  image: string;
 }
 
 interface Order {
   id: number;
-  customer_id: number;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string;
   order_number: string;
-  total_amount: string | number;
-  tax_amount: string | number;
-  grand_total: string | number;
-  order_date: string;
+  user_id: number | null;
+  items: OrderItem[];
+  total: string;
+  subtotal: string;
+  tax: string;
+  delivery_charge: string;
+  gst: string;
+  discount: string;
   status: string;
-  payment_status: string;
+  delivery_date: string | null;
+  event_date: string;
+  address: string | null;
   payment_method: string;
+  payment_status: string;
   notes: string | null;
   created_at: string;
   updated_at: string;
-  items: OrderItem[];
+  customer_id: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  address_id: number;
+  address_label: string;
+  address_full_name: string;
+  address_phone: string;
+  address_line1: string;
+  address_line2: string;
+  address_city: string;
+  address_state: string;
+  address_pincode: string;
+  address_country: string;
+  event_time: string;
+  event_type: string;
+  venue: string;
+  guest_count: number;
+  special_instructions: string;
+  coupon_discount: string;
+  coupon_code: string | null;
+  grand_total: string;
+  order_status: string;
 }
 
 const OrdersList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -62,7 +81,7 @@ const OrdersList: React.FC = () => {
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${BASE_URL}/api/orders`, {
+      const response = await axios.get(`${BASE_URL}/api/customer-orders/`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -88,40 +107,6 @@ const OrdersList: React.FC = () => {
     } catch (error) {
       console.error('Error deleting order:', error);
       alert('Failed to delete order');
-    }
-  };
-
-  const updateStatus = async (id: number, status: string) => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `${BASE_URL}/api/orders/${id}/status`,
-        { status },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      await fetchOrders();
-    } catch (error) {
-      console.error('Error updating status:', error);
-      alert('Failed to update status');
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'processing': return 'bg-blue-100 text-blue-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getPaymentStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'failed': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -154,15 +139,47 @@ const OrdersList: React.FC = () => {
     return typeof value === 'string' ? parseFloat(value) : value;
   };
 
+  // Helper function to get image URL - replace cloudflare with localhost
+  const getImageUrl = (imagePath: string) => {
+    if (!imagePath) return '/placeholder-image.jpg';
+    
+    // Replace cloudflare URLs with localhost
+    if (imagePath.includes('trycloudflare.com')) {
+      // Extract the path after /uploads/
+      const match = imagePath.match(/\/uploads\/.+$/);
+      if (match) {
+        return `http://localhost:5000${match[0]}`;
+      }
+    }
+    
+    // If it's already a localhost URL, return as is
+    if (imagePath.includes('localhost:5000')) {
+      return imagePath;
+    }
+    
+    // If it's a relative path, prepend localhost
+    if (imagePath.startsWith('/uploads/')) {
+      return `http://localhost:5000${imagePath}`;
+    }
+    
+    // If it starts with http but not cloudflare, return as is
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    // Default: prepend localhost
+    return `http://localhost:5000/uploads/products/${imagePath}`;
+  };
+
   // Filter orders
   const filteredOrders = orders.filter(order => {
     const matchSearch = 
-      order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customer_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.id.toString().includes(searchTerm);
     
-    const matchStatus = statusFilter === 'all' || order.status === statusFilter;
+    const matchStatus = statusFilter === 'all' || order.order_status === statusFilter;
     
     return matchSearch && matchStatus;
   });
@@ -170,7 +187,7 @@ const OrdersList: React.FC = () => {
   // Get status counts
   const getStatusCount = (status: string) => {
     if (status === 'all') return orders.length;
-    return orders.filter(order => order.status === status).length;
+    return orders.filter(order => order.order_status === status).length;
   };
 
   return (
@@ -183,7 +200,7 @@ const OrdersList: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <ShoppingBag size={28} className="text-[#0c2d67]" />
-              Orders
+              Customer Orders
             </h1>
             <p className="text-gray-600">Manage all customer orders</p>
           </div>
@@ -261,16 +278,15 @@ const OrdersList: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Event</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th> */}
-                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th> */}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                       <div className="flex items-center justify-center gap-2">
                         <span className="animate-spin">⏳</span> Loading orders...
                       </div>
@@ -278,188 +294,111 @@ const OrdersList: React.FC = () => {
                   </tr>
                 ) : filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                       {searchTerm ? 'No orders found matching your search' : 'No orders found'}
                     </td>
                   </tr>
                 ) : (
                   filteredOrders.map((order) => (
-                    <React.Fragment key={order.id}>
-                      <tr className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div>
-                            <p className="text-sm font-medium text-[#0c2d67]">{order.order_number}</p>
-                            <p className="text-xs text-gray-500">#{order.id}</p>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{order.customer_name}</p>
-                            <p className="text-sm text-gray-500">{order.customer_email}</p>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm font-medium">{order.items.length}</span>
-                            <span className="text-xs text-gray-500">items</span>
-                          </div>
-                          <div className="flex items-center gap-1 mt-1">
-                            {order.items.slice(0, 3).map((item, idx) => (
-                              <div key={idx} className="w-6 h-6 rounded border overflow-hidden bg-gray-100">
-                                {item.image_url ? (
-                                  <img 
-                                    src={`${BASE_URL}/${item.image_url}`} 
-                                    alt={item.product_name}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
-                                    }}
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-400 bg-gray-100">
-                                    {item.product_name.charAt(0)}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                            {order.items.length > 3 && (
-                              <span className="text-xs text-gray-500 ml-1">+{order.items.length - 3}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm font-semibold text-[#0c2d67]">
-                          ₹{formatPrice(order.grand_total).toFixed(2)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
-                          {new Date(order.order_date).toLocaleDateString()}
-                          <br />
-                          <span className="text-xs">{new Date(order.order_date).toLocaleTimeString()}</span>
-                        </td>
-                        {/* <td className="px-6 py-4">
-                          <select
-                            value={order.status}
-                            onChange={(e) => updateStatus(order.id, e.target.value)}
-                            className={`px-2 py-1 text-xs font-semibold rounded-full border-0 ${getStatusColor(order.status)}`}
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="processing">Processing</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
-                        </td> */}
-                        {/* <td className="px-6 py-4">
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusColor(order.payment_status)}`}>
-                            {order.payment_status}
-                          </span>
-                          <br />
-                          <span className="text-xs text-gray-400">{order.payment_method}</span>
-                        </td> */}
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-1">
-                            {/* View Details Button */}
-                            {/* <button
-                              onClick={() => viewOrderDetails(order)}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="View Order Details"
-                            >
-                              <Eye size={18} />
-                            </button> */}
-                            {/* View Invoice Button */}
-                            {/* <button
-                              onClick={() => viewInvoice(order)}
-                              className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                              title="View Invoice"
-                            >
-                              <FileText size={18} />
-                            </button> */}
-                            {/* Expand Button */}
-                            <button
-                              onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
-                              className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                              title="Expand Items"
-                            >
-                              {expandedOrder === order.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                            </button>
-                            {/* Delete Button */}
-                            <button
-                              onClick={() => deleteOrder(order.id)}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete Order"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      {expandedOrder === order.id && (
-                        <tr>
-                          <td colSpan={8} className="px-6 py-4 bg-gray-50">
-                            <div className="space-y-3">
-                              <h4 className="font-semibold text-gray-700 flex items-center gap-2">
-                                <Package size={16} /> Order Items
-                              </h4>
-                              <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                  <thead>
-                                    <tr className="text-gray-600 border-b">
-                                      <th className="text-left py-2">#</th>
-                                      <th className="text-left py-2">Product</th>
-                                      <th className="text-left py-2">Image</th>
-                                      <th className="text-left py-2">Code</th>
-                                      <th className="text-left py-2">Qty</th>
-                                      <th className="text-right py-2">Price</th>
-                                      <th className="text-right py-2">Discount</th>
-                                      <th className="text-right py-2">Subtotal</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {order.items.map((item, index) => (
-                                      <tr key={item.id} className="border-t border-gray-200">
-                                        <td className="py-2 text-gray-500">{index + 1}</td>
-                                        <td className="py-2 font-medium">{item.product_name}</td>
-                                        <td className="py-2">
-                                          {item.image_url ? (
-                                            <img 
-                                              src={`${BASE_URL}/${item.image_url}`} 
-                                              alt={item.product_name}
-                                              className="w-10 h-10 object-cover rounded border"
-                                              onError={(e) => {
-                                                (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
-                                              }}
-                                            />
-                                          ) : (
-                                            <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
-                                              No img
-                                            </div>
-                                          )}
-                                        </td>
-                                        <td className="py-2 text-gray-500">{item.product_code}</td>
-                                        <td className="py-2">{item.quantity}</td>
-                                        <td className="py-2 text-right">₹{formatPrice(item.price).toFixed(2)}</td>
-                                        <td className="py-2 text-right text-red-500">{formatPrice(item.discount)}%</td>
-                                        <td className="py-2 text-right font-medium">₹{formatPrice(item.subtotal).toFixed(2)}</td>
-                                      </tr>
-                                    ))}
-                                    <tr className="border-t-2 border-gray-300 font-bold">
-                                      <td colSpan={6} className="py-2 text-right">Subtotal:</td>
-                                      <td className="py-2 text-right" colSpan={2}>₹{formatPrice(order.total_amount).toFixed(2)}</td>
-                                    </tr>
-                                    <tr>
-                                      <td colSpan={6} className="py-2 text-right text-gray-600">Tax (18%):</td>
-                                      <td className="py-2 text-right text-gray-600" colSpan={2}>₹{formatPrice(order.tax_amount).toFixed(2)}</td>
-                                    </tr>
-                                    <tr className="border-t-2 border-gray-300">
-                                      <td colSpan={6} className="py-2 text-right text-lg font-bold text-[#0c2d67]">Grand Total:</td>
-                                      <td className="py-2 text-right text-lg font-bold text-[#0c2d67]" colSpan={2}>₹{formatPrice(order.grand_total).toFixed(2)}</td>
-                                    </tr>
-                                  </tbody>
-                                </table>
-                              </div>
+                    <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div>
+                          <p className="text-sm font-medium text-[#0c2d67]">{order.order_number}</p>
+                          <p className="text-xs text-gray-500">#{order.id}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{order.customer_name}</p>
+                          <p className="text-sm text-gray-500">{order.customer_email}</p>
+                          <p className="text-xs text-gray-400">{order.customer_phone}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-medium">{order.items?.length || 0}</span>
+                          <span className="text-xs text-gray-500">items</span>
+                        </div>
+                        <div className="flex items-center gap-1 mt-1">
+                          {order.items?.slice(0, 3).map((item, idx) => (
+                            <div key={idx} className="w-8 h-8 rounded border overflow-hidden bg-gray-100">
+                              {item.image ? (
+                                <img 
+                                  src={getImageUrl(item.image)} 
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-400 bg-gray-100">
+                                  {item.name?.charAt(0) || '?'}
+                                </div>
+                              )}
                             </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
+                          ))}
+                          {(order.items?.length || 0) > 3 && (
+                            <span className="text-xs text-gray-500 ml-1">+{(order.items?.length || 0) - 3}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-semibold text-[#0c2d67]">
+                          ₹{formatPrice(order.grand_total).toFixed(2)}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Items: ₹{formatPrice(order.subtotal).toFixed(2)}
+                        </div>
+                        {order.coupon_code && (
+                          <div className="text-xs text-green-600">
+                            Coupon: {order.coupon_code}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div>
+                          <span className="text-sm font-medium text-gray-800">{order.event_type}</span>
+                          <br />
+                          <span className="text-xs text-gray-500">{order.venue}</span>
+                          <br />
+                          <span className="text-xs text-gray-400">👥 {order.guest_count} guests</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {new Date(order.created_at).toLocaleDateString()}
+                        <br />
+                        <span className="text-xs">{new Date(order.created_at).toLocaleTimeString()}</span>
+                        <br />
+                        <span className="text-xs text-gray-400">
+                          📅 {new Date(order.event_date).toLocaleDateString()}
+                        </span>
+                        <br />
+                        <span className="text-xs text-gray-400">
+                          🕐 {order.event_time}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1">
+                          {/* View Details Button - Eye icon only */}
+                          <button
+                            onClick={() => viewOrderDetails(order)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="View Order Details"
+                          >
+                            <Eye size={18} />
+                          </button>
+                          {/* Delete Button - Trash icon only */}
+                          <button
+                            onClick={() => deleteOrder(order.id)}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete Order"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   ))
                 )}
               </tbody>
@@ -499,39 +438,55 @@ const OrdersList: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-700 flex items-center gap-2 mb-2">
-                    <Package size={16} /> Order Info
+                    <Calendar size={16} /> Event Details
                   </h3>
-                  <p className="text-sm text-gray-800"><strong>Order #:</strong> {selectedOrder.order_number}</p>
-                  <p className="text-sm text-gray-800"><strong>Date:</strong> {new Date(selectedOrder.order_date).toLocaleString()}</p>
-                  <p className="text-sm text-gray-800"><strong>Items:</strong> {selectedOrder.items.length}</p>
+                  <p className="text-sm text-gray-800"><strong>Type:</strong> {selectedOrder.event_type}</p>
+                  <p className="text-sm text-gray-800"><strong>Venue:</strong> {selectedOrder.venue}</p>
+                  <p className="text-sm text-gray-800"><strong>Date:</strong> {new Date(selectedOrder.event_date).toLocaleDateString()}</p>
+                  <p className="text-sm text-gray-800"><strong>Time:</strong> {selectedOrder.event_time}</p>
+                  <p className="text-sm text-gray-800"><strong>Guests:</strong> {selectedOrder.guest_count}</p>
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-700 flex items-center gap-2 mb-2">
                     <CreditCard size={16} /> Payment
                   </h3>
-                  <p className="text-sm text-gray-800">
-                    <strong>Status:</strong> 
-                    <span className={`ml-2 px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(selectedOrder.status)}`}>
-                      {selectedOrder.status}
-                    </span>
-                  </p>
-                  <p className="text-sm text-gray-800">
-                    <strong>Payment:</strong>
-                    <span className={`ml-2 px-2 py-0.5 text-xs font-semibold rounded-full ${getPaymentStatusColor(selectedOrder.payment_status)}`}>
-                      {selectedOrder.payment_status}
-                    </span>
-                  </p>
                   <p className="text-sm text-gray-800"><strong>Method:</strong> {selectedOrder.payment_method}</p>
+                  <p className="text-sm text-gray-800"><strong>Payment Status:</strong> {selectedOrder.payment_status}</p>
+                  {selectedOrder.coupon_code && (
+                    <p className="text-sm text-gray-800"><strong>Coupon:</strong> {selectedOrder.coupon_code}</p>
+                  )}
                 </div>
               </div>
             </div>
+
+            {/* Delivery Address */}
+            {selectedOrder.address_line1 && (
+              <div className="p-6 border-b">
+                <h3 className="font-semibold text-gray-700 flex items-center gap-2 mb-3">
+                  <Home size={16} /> Delivery Address
+                </h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-800">
+                    <strong>{selectedOrder.address_full_name}</strong> ({selectedOrder.address_label})
+                    <br />
+                    {selectedOrder.address_line1}, {selectedOrder.address_line2}
+                    <br />
+                    {selectedOrder.address_city}, {selectedOrder.address_state} - {selectedOrder.address_pincode}
+                    <br />
+                    {selectedOrder.address_country}
+                    <br />
+                    📞 {selectedOrder.address_phone}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Order Items */}
             <div className="p-6">
               <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
                 <Package size={18} /> Order Items
               </h3>
-              {selectedOrder.items.length === 0 ? (
+              {!selectedOrder.items || selectedOrder.items.length === 0 ? (
                 <p className="text-gray-500 text-center py-4">No items in this order</p>
               ) : (
                 <div className="overflow-x-auto">
@@ -541,11 +496,9 @@ const OrdersList: React.FC = () => {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Discount</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Subtotal</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -553,13 +506,13 @@ const OrdersList: React.FC = () => {
                         <tr key={item.id}>
                           <td className="px-4 py-3 text-sm text-gray-600">{index + 1}</td>
                           <td className="px-4 py-3">
-                            <p className="font-medium text-gray-800">{item.product_name}</p>
+                            <p className="font-medium text-gray-800">{item.name}</p>
                           </td>
                           <td className="px-4 py-3">
-                            {item.image_url ? (
+                            {item.image ? (
                               <img 
-                                src={`${BASE_URL}/${item.image_url}`} 
-                                alt={item.product_name}
+                                src={getImageUrl(item.image)} 
+                                alt={item.name}
                                 className="w-12 h-12 object-cover rounded border"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
@@ -571,29 +524,44 @@ const OrdersList: React.FC = () => {
                               </div>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-500">{item.product_code}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">{item.quantity}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">₹{formatPrice(item.price).toFixed(2)}</td>
-                          <td className="px-4 py-3 text-sm text-red-500 text-right">{formatPrice(item.discount)}%</td>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-800 text-right">₹{formatPrice(item.subtotal).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-800 text-right">₹{(item.price * item.quantity).toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot className="bg-gray-50">
                       <tr>
-                        <td colSpan={6} className="px-4 py-3 text-right font-medium text-gray-600">Subtotal:</td>
-                        <td colSpan={2} className="px-4 py-3 text-right font-medium">₹{formatPrice(selectedOrder.total_amount).toFixed(2)}</td>
+                        <td colSpan={4} className="px-4 py-3 text-right font-medium text-gray-600">Subtotal:</td>
+                        <td colSpan={2} className="px-4 py-3 text-right font-medium">₹{formatPrice(selectedOrder.subtotal).toFixed(2)}</td>
                       </tr>
                       <tr>
-                        <td colSpan={6} className="px-4 py-3 text-right font-medium text-gray-600">Tax (18%):</td>
-                        <td colSpan={2} className="px-4 py-3 text-right font-medium">₹{formatPrice(selectedOrder.tax_amount).toFixed(2)}</td>
+                        <td colSpan={4} className="px-4 py-3 text-right font-medium text-gray-600">Delivery Charge:</td>
+                        <td colSpan={2} className="px-4 py-3 text-right font-medium">₹{formatPrice(selectedOrder.delivery_charge).toFixed(2)}</td>
                       </tr>
+                      <tr>
+                        <td colSpan={4} className="px-4 py-3 text-right font-medium text-gray-600">GST:</td>
+                        <td colSpan={2} className="px-4 py-3 text-right font-medium">₹{formatPrice(selectedOrder.gst).toFixed(2)}</td>
+                      </tr>
+                      {selectedOrder.coupon_discount && formatPrice(selectedOrder.coupon_discount) > 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-3 text-right font-medium text-green-600">Coupon Discount:</td>
+                          <td colSpan={2} className="px-4 py-3 text-right font-medium text-green-600">-₹{formatPrice(selectedOrder.coupon_discount).toFixed(2)}</td>
+                        </tr>
+                      )}
                       <tr className="border-t-2 border-gray-300">
-                        <td colSpan={6} className="px-4 py-3 text-right font-bold text-lg text-[#0c2d67]">Grand Total:</td>
+                        <td colSpan={4} className="px-4 py-3 text-right font-bold text-lg text-[#0c2d67]">Grand Total:</td>
                         <td colSpan={2} className="px-4 py-3 text-right font-bold text-lg text-[#0c2d67]">₹{formatPrice(selectedOrder.grand_total).toFixed(2)}</td>
                       </tr>
                     </tfoot>
                   </table>
+                </div>
+              )}
+
+              {selectedOrder.special_instructions && (
+                <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <h5 className="font-semibold text-gray-700 text-sm">Special Instructions:</h5>
+                  <p className="text-sm text-gray-600">{selectedOrder.special_instructions}</p>
                 </div>
               )}
             </div>
@@ -607,7 +575,7 @@ const OrdersList: React.FC = () => {
                 }}
                 className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
               >
-                <FileText size={18} /> View Invoice
+                <Printer size={18} /> View Invoice
               </button>
               <button
                 onClick={closeDetailsModal}
@@ -636,8 +604,7 @@ const OrdersList: React.FC = () => {
                 <div className="text-right">
                   <h2 className="text-4xl font-bold">INVOICE</h2>
                   <p className="text-lg mt-2">{selectedOrder.order_number}</p>
-                  <p className="text-blue-200">Date: {new Date(selectedOrder.order_date).toLocaleDateString()}</p>
-                  <p className="text-blue-200">Status: <span className="uppercase">{selectedOrder.status}</span></p>
+                  <p className="text-blue-200">Date: {new Date(selectedOrder.created_at).toLocaleDateString()}</p>
                 </div>
               </div>
             </div>
@@ -655,15 +622,15 @@ const OrdersList: React.FC = () => {
                     <p className="text-gray-800"><strong>Phone:</strong> {selectedOrder.customer_phone}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <h3 className="font-semibold text-gray-700">Order Details</h3>
+                <div>
+                  <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                    <Calendar size={18} /> Event Details
+                  </h3>
                   <div className="mt-2 space-y-1">
-                    <p className="text-gray-800"><strong>Order #:</strong> {selectedOrder.order_number}</p>
-                    <p className="text-gray-800"><strong>Status:</strong> <span className="text-green-600 uppercase">{selectedOrder.status}</span></p>
-                    <p className="text-gray-800"><strong>Payment:</strong> <span className={`uppercase ${selectedOrder.payment_status === 'paid' ? 'text-green-600' : 'text-yellow-600'}`}>
-                      {selectedOrder.payment_status}
-                    </span></p>
-                    <p className="text-gray-800"><strong>Payment Method:</strong> {selectedOrder.payment_method}</p>
+                    <p className="text-gray-800"><strong>Event:</strong> {selectedOrder.event_type}</p>
+                    <p className="text-gray-800"><strong>Venue:</strong> {selectedOrder.venue}</p>
+                    <p className="text-gray-800"><strong>Date:</strong> {new Date(selectedOrder.event_date).toLocaleDateString()}</p>
+                    <p className="text-gray-800"><strong>Time:</strong> {selectedOrder.event_time}</p>
                   </div>
                 </div>
               </div>
@@ -672,7 +639,7 @@ const OrdersList: React.FC = () => {
             {/* Invoice Items */}
             <div className="p-6">
               <h3 className="font-semibold text-gray-700 mb-4">Order Items</h3>
-              {selectedOrder.items.length === 0 ? (
+              {!selectedOrder.items || selectedOrder.items.length === 0 ? (
                 <p className="text-gray-500 text-center py-4">No items in this order</p>
               ) : (
                 <div className="overflow-x-auto">
@@ -684,7 +651,6 @@ const OrdersList: React.FC = () => {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Discount</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
                       </tr>
                     </thead>
@@ -694,15 +660,14 @@ const OrdersList: React.FC = () => {
                           <td className="px-4 py-3 text-sm text-gray-600">{index + 1}</td>
                           <td className="px-4 py-3">
                             <div>
-                              <p className="font-medium text-gray-800">{item.product_name}</p>
-                              <p className="text-xs text-gray-500">{item.product_code}</p>
+                              <p className="font-medium text-gray-800">{item.name}</p>
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            {item.image_url ? (
+                            {item.image ? (
                               <img 
-                                src={`${BASE_URL}/${item.image_url}`} 
-                                alt={item.product_name}
+                                src={getImageUrl(item.image)} 
+                                alt={item.name}
                                 className="w-12 h-12 object-cover rounded border"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
@@ -716,8 +681,7 @@ const OrdersList: React.FC = () => {
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-600">{item.quantity}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">₹{formatPrice(item.price).toFixed(2)}</td>
-                          <td className="px-4 py-3 text-sm text-red-500 text-right">{formatPrice(item.discount)}%</td>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-800 text-right">₹{formatPrice(item.subtotal).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-800 text-right">₹{(item.price * item.quantity).toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -731,12 +695,22 @@ const OrdersList: React.FC = () => {
                   <div className="w-full md:w-64 space-y-2">
                     <div className="flex justify-between text-gray-600">
                       <span>Subtotal:</span>
-                      <span>₹{formatPrice(selectedOrder.total_amount).toFixed(2)}</span>
+                      <span>₹{formatPrice(selectedOrder.subtotal).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-gray-600">
-                      <span>Tax (18%):</span>
-                      <span>₹{formatPrice(selectedOrder.tax_amount).toFixed(2)}</span>
+                      <span>Delivery Charge:</span>
+                      <span>₹{formatPrice(selectedOrder.delivery_charge).toFixed(2)}</span>
                     </div>
+                    <div className="flex justify-between text-gray-600">
+                      <span>GST:</span>
+                      <span>₹{formatPrice(selectedOrder.gst).toFixed(2)}</span>
+                    </div>
+                    {selectedOrder.coupon_discount && formatPrice(selectedOrder.coupon_discount) > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Coupon Discount ({selectedOrder.coupon_code}):</span>
+                        <span>-₹{formatPrice(selectedOrder.coupon_discount).toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-xl font-bold text-[#0c2d67] pt-2 border-t-2 border-dashed">
                       <span>Grand Total:</span>
                       <span>₹{formatPrice(selectedOrder.grand_total).toFixed(2)}</span>
@@ -744,6 +718,26 @@ const OrdersList: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Delivery Address */}
+              {selectedOrder.address_line1 && (
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
+                  <h5 className="font-semibold text-gray-700 flex items-center gap-2">
+                    <MapPin size={16} /> Delivery Address
+                  </h5>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {selectedOrder.address_full_name} ({selectedOrder.address_label})
+                    <br />
+                    {selectedOrder.address_line1}, {selectedOrder.address_line2}
+                    <br />
+                    {selectedOrder.address_city}, {selectedOrder.address_state} - {selectedOrder.address_pincode}
+                    <br />
+                    {selectedOrder.address_country}
+                    <br />
+                    📞 {selectedOrder.address_phone}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Footer */}

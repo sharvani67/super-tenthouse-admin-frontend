@@ -29,8 +29,8 @@ const Navbar = () => {
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: Home },
-    { name: 'Categories', path: '/admin-categories', icon: Package },
-    { name: 'Products', path: '/admin-products', icon: Package },
+    // { name: 'Categories', path: '/admin-categories', icon: Package },
+    // { name: 'Products', path: '/admin-products', icon: Package },
     { name: 'Orders', path: '/admin/orders', icon: ShoppingBag },
     { name: 'Categories', path: '/admin-categories', icon: LayoutGrid },
     { name: 'Products', path: '/admin-products', icon: ShoppingBag },
@@ -41,7 +41,7 @@ const Navbar = () => {
 
   return (
     <nav className="bg-[#0c2d67] text-white shadow-lg sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center space-x-3">
