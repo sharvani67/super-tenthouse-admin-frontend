@@ -185,76 +185,90 @@ const OrdersList: React.FC = () => {
   };
 
   // ============================================================
-  // UPDATE STATUS
+  // UPDATE STATUS - FIXED
   // ============================================================
-  const updateOrderStatus = async (orderId: number, status: string) => {
-    // Optimistic UI update so the dropdown/badge reflects the change immediately
-    const previousCustomerOrders = customerOrders;
-    const previousAdminOrders = adminOrders;
+ const updateOrderStatus = async (orderId, status) => {
+  // Map status to payment status
+  let paymentStatus = 'pending';
+  if (status === 'completed' || status === 'approved') {
+    paymentStatus = 'completed';
+  } else if (status === 'cancelled' || status === 'rejected') {
+    paymentStatus = 'failed';
+  }
 
-    let paymentStatus = 'pending';
-    if (status === 'approved') {
-      paymentStatus = 'completed';
-    } else if (status === 'cancelled') {
-      paymentStatus = 'failed';
-    }
+  // Optimistic UI update
+  const previousCustomerOrders = customerOrders;
+  const previousAdminOrders = adminOrders;
 
-    if (orderType === 'customer') {
-      setCustomerOrders(prev =>
-        prev.map(o => o.id === orderId ? { ...o, order_status: status, payment_status: paymentStatus } : o)
-      );
-    } else {
-      setAdminOrders(prev =>
-        prev.map(o => o.id === orderId ? { ...o, status: status, payment_status: paymentStatus } : o)
-      );
-    }
+  if (orderType === 'customer') {
+    setCustomerOrders(prev =>
+      prev.map(o => o.id === orderId ? { ...o, status: status, payment_status: paymentStatus } : o)
+    );
+  } else {
+    setAdminOrders(prev =>
+      prev.map(o => o.id === orderId ? { ...o, status: status, payment_status: paymentStatus } : o)
+    );
+  }
 
-    setUpdatingOrderId(orderId);
-    try {
-      const token = localStorage.getItem('token');
+  setUpdatingOrderId(orderId);
+  try {
+    const token = localStorage.getItem('token');
 
-      // Choose endpoint based on order type
-      const endpoint = orderType === 'customer'
-        ? `${BASE_URL}/api/customer-orders/${orderId}/status-payment`
-        : `${BASE_URL}/api/orders/${orderId}/status-payment`;
+    // Choose endpoint based on order type
+    const endpoint = orderType === 'customer'
+      ? `${BASE_URL}/api/customer-orders/${orderId}/status-payment`
+      : `${BASE_URL}/api/orders/${orderId}/status-payment`;
 
-      const payload = orderType === 'customer'
-        ? { order_status: status, payment_status: paymentStatus }
-        : { status: status, payment_status: paymentStatus };
+    // Same payload for both - just status and payment_status
+    const payload = { status: status, payment_status: paymentStatus };
 
-      const response = await axios.put(endpoint, payload, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+    console.log('Sending payload:', payload);
 
-      // Trust the server's response as the source of truth
-      const updated = response.data?.data;
-      if (updated) {
-        const normalizedUpdate = normalizeOrder(updated);
-        if (orderType === 'customer') {
-          setCustomerOrders(prev => prev.map(o => (o.id === orderId ? { ...o, ...normalizedUpdate } : o)));
-        } else {
-          setAdminOrders(prev => prev.map(o => (o.id === orderId ? { ...o, ...normalizedUpdate } : o)));
-        }
-      } else {
-        // Fallback: re-fetch if server didn't return the updated row
-        await fetchOrders();
-      }
+    const response = await axios.put(endpoint, payload, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
 
-      alert(`Order status updated to ${status.charAt(0).toUpperCase() + status.slice(1)}!`);
+    console.log('Response:', response.data);
 
-    } catch (error) {
-      console.error('Error updating order status:', error);
-      // Roll back optimistic update on failure
+    // Check if the response has the updated data
+    if (response.data?.data) {
+      const updated = response.data.data;
+      const normalizedUpdate = normalizeOrder(updated);
+      
       if (orderType === 'customer') {
-        setCustomerOrders(previousCustomerOrders);
+        setCustomerOrders(prev => 
+          prev.map(o => (o.id === orderId ? { ...o, ...normalizedUpdate } : o))
+        );
       } else {
-        setAdminOrders(previousAdminOrders);
+        setAdminOrders(prev => 
+          prev.map(o => (o.id === orderId ? { ...o, ...normalizedUpdate } : o))
+        );
       }
-      alert('Failed to update order status');
-    } finally {
-      setUpdatingOrderId(null);
+    } else if (response.data?.success) {
+      // If success but no data, fetch fresh
+      await fetchOrders();
+    } else {
+      console.error('Unexpected response:', response.data);
+      throw new Error('Invalid response from server');
     }
-  };
+
+    alert(`Order status updated to ${status.charAt(0).toUpperCase() + status.slice(1)}!`);
+
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    console.error('Error details:', error.response?.data);
+    
+    // Roll back optimistic update on failure
+    if (orderType === 'customer') {
+      setCustomerOrders(previousCustomerOrders);
+    } else {
+      setAdminOrders(previousAdminOrders);
+    }
+    alert(`Failed to update order status: ${error.response?.data?.message || error.message}`);
+  } finally {
+    setUpdatingOrderId(null);
+  }
+};
 
   // ============================================================
   // DELETE ORDER
@@ -265,9 +279,6 @@ const OrdersList: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
 
-      // FIX: use the correct endpoint based on the active tab instead of
-      // always hitting /api/orders (which previously deleted from the
-      // wrong table when viewing Customer Orders).
       const endpoint = orderType === 'customer'
         ? `${BASE_URL}/api/customer-orders/${id}`
         : `${BASE_URL}/api/orders/${id}`;
@@ -350,10 +361,11 @@ const OrdersList: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'approved': 
       case 'completed': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'cancelled': 
+      case 'rejected': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -364,7 +376,8 @@ const OrdersList: React.FC = () => {
       case 'pending': return 'bg-orange-100 text-orange-800';
       case 'completed':
       case 'paid': return 'bg-green-100 text-green-800';
-      case 'failed': return 'bg-red-100 text-red-800';
+      case 'failed': 
+      case 'blocked': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -400,14 +413,15 @@ const OrdersList: React.FC = () => {
   // ============================================================
   // RENDER HELPERS
   // ============================================================
-  const renderStatusBadge = (order: any) => {
-    const status = order.order_status || order.status || 'pending';
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </span>
-    );
-  };
+ // Update the renderStatusBadge function
+const renderStatusBadge = (order: any) => {
+  const status = order.status || 'pending'; // Changed from order_status to status
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </span>
+  );
+};
 
   const renderPaymentStatusBadge = (order: any) => {
     const status = order.payment_status || 'pending';
@@ -418,33 +432,32 @@ const OrdersList: React.FC = () => {
     );
   };
 
-  // Single status update dropdown - Only Pending, Approved, Cancelled
-  const renderStatusActions = (order: any) => {
-    const orderId = order.id;
-    const currentStatus = order.order_status || order.status || 'pending';
-    const isUpdating = updatingOrderId === orderId;
+ // Update the renderStatusActions function
+const renderStatusActions = (order: any) => {
+  const orderId = order.id;
+  const currentStatus = order.status || 'pending'; // Changed from order_status to status
+  const isUpdating = updatingOrderId === orderId;
 
-    return (
-      <div className="flex flex-col gap-1">
-        <select
-          value={currentStatus}
-          onChange={(e) => updateOrderStatus(orderId, e.target.value)}
-          disabled={isUpdating}
-          className="text-xs border rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#0c2d67] disabled:opacity-50 min-w-[100px]"
-        >
-          <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-        {isUpdating && (
-          <span className="text-xs text-gray-400 flex items-center gap-1">
-            <RefreshCw size={12} className="animate-spin" /> Updating...
-          </span>
-        )}
-      </div>
-    );
-  };
-
+  return (
+    <div className="flex flex-col gap-1">
+      <select
+        value={currentStatus}
+        onChange={(e) => updateOrderStatus(orderId, e.target.value)}
+        disabled={isUpdating}
+        className="text-xs border rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#0c2d67] disabled:opacity-50 min-w-[100px]"
+      >
+        <option value="pending">Pending</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+      </select>
+      {isUpdating && (
+        <span className="text-xs text-gray-400 flex items-center gap-1">
+          <RefreshCw size={12} className="animate-spin" /> Updating...
+        </span>
+      )}
+    </div>
+  );
+};
   // ============================================================
   // RENDER
   // ============================================================
@@ -523,8 +536,8 @@ const OrdersList: React.FC = () => {
             <p className="text-sm text-gray-500">Approved</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4 text-center">
-            <p className="text-2xl font-bold text-red-600">{getStatusCount('cancelled')}</p>
-            <p className="text-sm text-gray-500">Cancelled</p>
+            <p className="text-2xl font-bold text-red-600">{getStatusCount('rejected')}</p>
+            <p className="text-sm text-gray-500">Rejected</p>
           </div>
         </div>
 
@@ -541,7 +554,7 @@ const OrdersList: React.FC = () => {
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              {['all', 'pending', 'approved', 'cancelled'].map((status) => (
+              {['all', 'pending', 'approved', 'rejected'].map((status) => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
