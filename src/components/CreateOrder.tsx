@@ -7,6 +7,7 @@ import {
   Printer, Download, FileText, User, Phone, Mail, Calendar, 
   Tag, Package, IndianRupee, CreditCard, Building, MapPin, Trash2, CheckCircle
 } from 'lucide-react';
+import Navbar from './Navbar';
 
 interface User {
   id: number;
@@ -304,6 +305,7 @@ const CreateOrder: React.FC = () => {
     
     return (
       <div className="min-h-screen bg-gray-100 py-8">
+       
         <div className="max-w-4xl mx-auto px-4">
           {/* Toast Notification */}
           {toastMessage && (
@@ -457,6 +459,7 @@ const CreateOrder: React.FC = () => {
   // Main order creation view
   return (
     <div className="min-h-screen bg-gray-50">
+      <Navbar />
       {/* Toast Notification */}
       {toastMessage && (
         <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg ${
