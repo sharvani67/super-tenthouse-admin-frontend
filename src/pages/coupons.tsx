@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import Navbar from '@/components/Navbar';
+import BASE_URL from '@/Config/Api';
 
 interface Coupon {
   id: number;
@@ -59,7 +60,7 @@ const AdminCoupons = () => {
     is_active: 1
   });
 
-  const API_BASE_URL = 'https://reseller-italia-directive-properties.trycloudflare.com/api';
+  const API_BASE_URL = BASE_URL;
 
   // ─── Fetch Coupons ──────────────────────────────────────────────────────────
   const fetchCoupons = useCallback(async () => {
@@ -74,8 +75,8 @@ const AdminCoupons = () => {
         return;
       }
 
-      console.log('📦 Fetching coupons...');
-      const response = await axios.get(`${API_BASE_URL}/admin/coupons`, {
+      console.log('📦 Fetching coupons from:', `${API_BASE_URL}/api/admin/coupons`);
+      const response = await axios.get(`${API_BASE_URL}/api/admin/coupons`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -91,11 +92,17 @@ const AdminCoupons = () => {
       }
     } catch (err: any) {
       console.error('❌ Error fetching coupons:', err);
-      setError(err.response?.data?.message || 'Failed to fetch coupons');
+      if (err.code === 'ERR_NETWORK') {
+        setError('Network error. Please check if the server is running.');
+      } else if (err.response?.status === 401) {
+        setError('Unauthorized. Please login again.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to fetch coupons');
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [API_BASE_URL]);
 
   useEffect(() => {
     fetchCoupons();
@@ -103,6 +110,24 @@ const AdminCoupons = () => {
 
   // ─── Create Coupon ──────────────────────────────────────────────────────────
   const createCoupon = async () => {
+    // Validate required fields
+    if (!formData.code.trim()) {
+      alert('Please enter a coupon code');
+      return;
+    }
+    if (!formData.description.trim()) {
+      alert('Please enter a description');
+      return;
+    }
+    if (!formData.discount || parseFloat(formData.discount) <= 0) {
+      alert('Please enter a valid discount value');
+      return;
+    }
+    if (!formData.expires_at) {
+      alert('Please select an expiry date');
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
       
@@ -122,7 +147,7 @@ const AdminCoupons = () => {
 
       console.log('📦 Creating coupon:', payload);
 
-      const response = await axios.post(`${API_BASE_URL}/admin/coupons`, payload, {
+      const response = await axios.post(`${API_BASE_URL}/api/admin/coupons`, payload, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -133,7 +158,7 @@ const AdminCoupons = () => {
         await fetchCoupons();
         resetForm();
         setShowModal(false);
-        alert('Coupon created successfully!');
+        alert('✅ Coupon created successfully!');
       } else {
         alert('Failed to create coupon: ' + (response.data.message || 'Unknown error'));
       }
@@ -147,6 +172,24 @@ const AdminCoupons = () => {
   const updateCoupon = async () => {
     if (!editingCoupon) return;
     
+    // Validate required fields
+    if (!formData.code.trim()) {
+      alert('Please enter a coupon code');
+      return;
+    }
+    if (!formData.description.trim()) {
+      alert('Please enter a description');
+      return;
+    }
+    if (!formData.discount || parseFloat(formData.discount) <= 0) {
+      alert('Please enter a valid discount value');
+      return;
+    }
+    if (!formData.expires_at) {
+      alert('Please select an expiry date');
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
       
@@ -166,7 +209,7 @@ const AdminCoupons = () => {
 
       console.log('📦 Updating coupon:', payload);
 
-      const response = await axios.put(`${API_BASE_URL}/admin/coupons/${editingCoupon.id}`, payload, {
+      const response = await axios.put(`${API_BASE_URL}/api/admin/coupons/${editingCoupon.id}`, payload, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -177,7 +220,7 @@ const AdminCoupons = () => {
         await fetchCoupons();
         resetForm();
         setShowModal(false);
-        alert('Coupon updated successfully!');
+        alert('✅ Coupon updated successfully!');
       } else {
         alert('Failed to update coupon: ' + (response.data.message || 'Unknown error'));
       }
@@ -189,12 +232,12 @@ const AdminCoupons = () => {
 
   // ─── Delete Coupon ──────────────────────────────────────────────────────────
   const deleteCoupon = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this coupon?')) return;
+    if (!window.confirm('Are you sure you want to delete this coupon?')) return;
     
     try {
       const token = localStorage.getItem('token');
       
-      const response = await axios.delete(`${API_BASE_URL}/admin/coupons/${id}`, {
+      const response = await axios.delete(`${API_BASE_URL}/api/admin/coupons/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -202,7 +245,7 @@ const AdminCoupons = () => {
 
       if (response.data.success) {
         await fetchCoupons();
-        alert('Coupon deleted successfully!');
+        alert('✅ Coupon deleted successfully!');
       } else {
         alert('Failed to delete coupon');
       }
@@ -295,10 +338,13 @@ const AdminCoupons = () => {
   // ─── Loading State ──────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading coupons...</p>
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="flex items-center justify-center h-[calc(100vh-64px)]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading coupons...</p>
+          </div>
         </div>
       </div>
     );
@@ -307,18 +353,32 @@ const AdminCoupons = () => {
   // ─── Error State ──────────────────────────────────────────────────────────
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="text-gray-600 font-semibold">Error loading coupons</p>
-          <p className="text-sm text-gray-400 mt-2">{error}</p>
-          <button
-            onClick={fetchCoupons}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4 inline mr-2" />
-            Retry
-          </button>
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="flex items-center justify-center h-[calc(100vh-64px)]">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <p className="text-lg font-semibold text-gray-800">Error loading coupons</p>
+            <p className="text-sm text-gray-500 mt-2">{error}</p>
+            <div className="mt-4 flex gap-3 justify-center">
+              <button
+                onClick={fetchCoupons}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Retry
+              </button>
+              <button
+                onClick={() => {
+                  setError(null);
+                  setLoading(false);
+                }}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Go Back
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -326,168 +386,170 @@ const AdminCoupons = () => {
 
   return (
     <>
-    <Navbar />
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-        
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Tag className="text-blue-600" />
-              Coupons
-            </h1>
-            <p className="text-gray-600">Manage your promotional coupons</p>
-          </div>
-          <div className="mt-4 md:mt-0 flex items-center gap-3">
-            <span className="text-sm text-gray-500">
-              Total: <strong>{filteredCoupons.length}</strong> coupons
-            </span>
-            <button
-              onClick={() => {
-                resetForm();
-                setShowModal(true);
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Coupon
-            </button>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search coupons..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+      <Navbar />
+      <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <Tag className="text-blue-600" />
+                Coupons
+              </h1>
+              <p className="text-gray-600">Manage your promotional coupons</p>
             </div>
-
-            <div className="flex items-center gap-2">
-              <Filter className="text-gray-400 w-5 h-5" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            <div className="mt-4 md:mt-0 flex items-center gap-3">
+              <span className="text-sm text-gray-500">
+                Total: <strong>{filteredCoupons.length}</strong> coupons
+              </span>
+              <button
+                onClick={() => {
+                  resetForm();
+                  setShowModal(true);
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
               >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="expired">Expired</option>
-              </select>
+                <Plus className="w-4 h-4" />
+                Add Coupon
+              </button>
             </div>
-
-            <button
-              onClick={fetchCoupons}
-              className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
-            </button>
           </div>
-        </div>
 
-        {/* Coupons Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {filteredCoupons.length === 0 ? (
-            <div className="text-center py-12">
-              <Tag className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 font-medium">No coupons found</p>
-              <p className="text-sm text-gray-400 mt-1">
-                {searchTerm || statusFilter !== 'all' ? 'Try adjusting your filters' : 'Create your first coupon'}
-              </p>
+          {/* Filters */}
+          <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search coupons..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Filter className="text-gray-400 w-5 h-5" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="expired">Expired</option>
+                </select>
+              </div>
+
+              <button
+                onClick={fetchCoupons}
+                className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Code
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Discount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Min Order
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Usage
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredCoupons.map((coupon) => (
-                    <tr key={coupon.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded text-sm">
-                          {coupon.code}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">{coupon.description}</div>
-                        <div className="text-xs text-gray-400">
-                          {new Date(coupon.expires_at).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-semibold text-gray-900">
-                          {coupon.type === 'percentage' ? `${coupon.discount}%` : `₹${coupon.discount}`}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        ₹{coupon.minimum_order?.toLocaleString() || '0'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-600">
-                            {coupon.used_count || 0}
-                            {coupon.usage_limit && ` / ${coupon.usage_limit}`}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge coupon={coupon} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => editCoupon(coupon)}
-                            className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => deleteCoupon(coupon.id)}
-                            className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
+          </div>
+
+          {/* Coupons Table */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            {filteredCoupons.length === 0 ? (
+              <div className="text-center py-12">
+                <Tag className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 font-medium">No coupons found</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  {searchTerm || statusFilter !== 'all' ? 'Try adjusting your filters' : 'Create your first coupon'}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Code
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Description
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Discount
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Min Order
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Usage
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredCoupons.map((coupon) => (
+                      <tr key={coupon.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded text-sm">
+                            {coupon.code}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{coupon.description}</div>
+                          <div className="text-xs text-gray-400">
+                            {new Date(coupon.expires_at).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm font-semibold text-gray-900">
+                            {coupon.type === 'percentage' ? `${coupon.discount}%` : `₹${coupon.discount}`}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          ₹{coupon.minimum_order?.toLocaleString() || '0'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-gray-400" />
+                            <span className="text-sm text-gray-600">
+                              {coupon.used_count || 0}
+                              {coupon.usage_limit && ` / ${coupon.usage_limit}`}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <StatusBadge coupon={coupon} />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => editCoupon(coupon)}
+                              className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Edit Coupon"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => deleteCoupon(coupon.id)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete Coupon"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -546,6 +608,7 @@ const AdminCoupons = () => {
                   </label>
                   <input
                     type="number"
+                    step="0.01"
                     value={formData.discount}
                     onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
                     placeholder={formData.type === 'percentage' ? 'e.g., 20' : 'e.g., 500'}
@@ -560,6 +623,7 @@ const AdminCoupons = () => {
                   </label>
                   <input
                     type="number"
+                    step="0.01"
                     value={formData.minimum_order}
                     onChange={(e) => setFormData({ ...formData, minimum_order: e.target.value })}
                     placeholder="e.g., 500"
@@ -573,6 +637,7 @@ const AdminCoupons = () => {
                   </label>
                   <input
                     type="number"
+                    step="0.01"
                     value={formData.max_discount}
                     onChange={(e) => setFormData({ ...formData, max_discount: e.target.value })}
                     placeholder="Optional"
@@ -682,7 +747,6 @@ const AdminCoupons = () => {
           </div>
         </div>
       )}
-    </div>
     </>
   );
 };
