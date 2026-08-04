@@ -21,6 +21,7 @@ import OrdersList from '@/components/OrderList';
 import AdminPackages from "./pages/AdminPackages";
 import AdminAddons from "./pages/AdminAddons";
 import AdminOrders from "./pages/AdminOrders";
+import AdminCoupons from "./pages/coupons";
 // import AdminDashboard from "./components/AdminDashboard"
 // import ProfileSettings from "./components/ProfileSettings";
 
@@ -59,6 +60,7 @@ const App = () => (
 
               <Route path="/admin/create-order/:userId?" element={<CreateOrder />} />
               <Route path="/admin/orders" element={<OrdersList />} />
+              <Route path="/admin/coupons" element={<AdminCoupons />} />
 
 
 

@@ -1,3 +1,4 @@
+// components/Navbar.tsx
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
@@ -13,7 +14,8 @@ import {
   Gift,
   LayoutGrid,
   Plus,
-  ShoppingCart // Added for Orders
+  ShoppingCart,
+  Tag // Added for Coupons
 } from 'lucide-react';
 import logo from '@/assets/iiiqbetslogo.png';
 
@@ -29,13 +31,12 @@ const Navbar = () => {
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: Home },
-    // { name: 'Categories', path: '/admin-categories', icon: Package },
-    // { name: 'Products', path: '/admin-products', icon: Package },
     { name: 'Orders', path: '/admin/orders', icon: ShoppingBag },
     { name: 'Categories', path: '/admin-categories', icon: LayoutGrid },
     { name: 'Products', path: '/admin-products', icon: ShoppingBag },
     { name: 'Packages', path: '/admin/packages', icon: Gift },
     { name: 'Add-Ons', path: '/admin-addons', icon: Plus },
+    { name: 'Coupons', path: '/admin/coupons', icon: Tag }, // Added Coupons
     { name: 'Users', path: '/users', icon: Users },
   ];
 

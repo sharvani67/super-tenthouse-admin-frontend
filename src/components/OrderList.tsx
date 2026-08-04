@@ -185,90 +185,91 @@ const OrdersList: React.FC = () => {
   };
 
   // ============================================================
-  // UPDATE STATUS - FIXED
+  // UPDATE STATUS - FIXED WITH CORRECT PAYMENT STATUS
   // ============================================================
- const updateOrderStatus = async (orderId, status) => {
-  // Map status to payment status
-  let paymentStatus = 'pending';
-  if (status === 'completed' || status === 'approved') {
-    paymentStatus = 'completed';
-  } else if (status === 'cancelled' || status === 'rejected') {
-    paymentStatus = 'failed';
-  }
-
-  // Optimistic UI update
-  const previousCustomerOrders = customerOrders;
-  const previousAdminOrders = adminOrders;
-
-  if (orderType === 'customer') {
-    setCustomerOrders(prev =>
-      prev.map(o => o.id === orderId ? { ...o, status: status, payment_status: paymentStatus } : o)
-    );
-  } else {
-    setAdminOrders(prev =>
-      prev.map(o => o.id === orderId ? { ...o, status: status, payment_status: paymentStatus } : o)
-    );
-  }
-
-  setUpdatingOrderId(orderId);
-  try {
-    const token = localStorage.getItem('token');
-
-    // Choose endpoint based on order type
-    const endpoint = orderType === 'customer'
-      ? `${BASE_URL}/api/customer-orders/${orderId}/status-payment`
-      : `${BASE_URL}/api/orders/${orderId}/status-payment`;
-
-    // Same payload for both - just status and payment_status
-    const payload = { status: status, payment_status: paymentStatus };
-
-    console.log('Sending payload:', payload);
-
-    const response = await axios.put(endpoint, payload, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    console.log('Response:', response.data);
-
-    // Check if the response has the updated data
-    if (response.data?.data) {
-      const updated = response.data.data;
-      const normalizedUpdate = normalizeOrder(updated);
-      
-      if (orderType === 'customer') {
-        setCustomerOrders(prev => 
-          prev.map(o => (o.id === orderId ? { ...o, ...normalizedUpdate } : o))
-        );
-      } else {
-        setAdminOrders(prev => 
-          prev.map(o => (o.id === orderId ? { ...o, ...normalizedUpdate } : o))
-        );
-      }
-    } else if (response.data?.success) {
-      // If success but no data, fetch fresh
-      await fetchOrders();
-    } else {
-      console.error('Unexpected response:', response.data);
-      throw new Error('Invalid response from server');
+  const updateOrderStatus = async (orderId, status) => {
+    // ─── FIX: Map status to valid payment_status values ──────
+    // Valid payment_status values: 'pending', 'paid', 'failed', 'blocked'
+    let paymentStatus = 'pending';
+    if (status === 'completed' || status === 'approved') {
+      paymentStatus = 'paid';  // ← FIXED: Changed from 'completed' to 'paid'
+    } else if (status === 'cancelled' || status === 'rejected') {
+      paymentStatus = 'failed';
     }
 
-    alert(`Order status updated to ${status.charAt(0).toUpperCase() + status.slice(1)}!`);
+    // Optimistic UI update
+    const previousCustomerOrders = customerOrders;
+    const previousAdminOrders = adminOrders;
 
-  } catch (error) {
-    console.error('Error updating order status:', error);
-    console.error('Error details:', error.response?.data);
-    
-    // Roll back optimistic update on failure
     if (orderType === 'customer') {
-      setCustomerOrders(previousCustomerOrders);
+      setCustomerOrders(prev =>
+        prev.map(o => o.id === orderId ? { ...o, status: status, payment_status: paymentStatus } : o)
+      );
     } else {
-      setAdminOrders(previousAdminOrders);
+      setAdminOrders(prev =>
+        prev.map(o => o.id === orderId ? { ...o, status: status, payment_status: paymentStatus } : o)
+      );
     }
-    alert(`Failed to update order status: ${error.response?.data?.message || error.message}`);
-  } finally {
-    setUpdatingOrderId(null);
-  }
-};
+
+    setUpdatingOrderId(orderId);
+    try {
+      const token = localStorage.getItem('token');
+
+      // Choose endpoint based on order type
+      const endpoint = orderType === 'customer'
+        ? `${BASE_URL}/api/customer-orders/${orderId}/status-payment`
+        : `${BASE_URL}/api/orders/${orderId}/status-payment`;
+
+      // Same payload for both - just status and payment_status
+      const payload = { status: status, payment_status: paymentStatus };
+
+      console.log('Sending payload:', payload);
+
+      const response = await axios.put(endpoint, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      console.log('Response:', response.data);
+
+      // Check if the response has the updated data
+      if (response.data?.data) {
+        const updated = response.data.data;
+        const normalizedUpdate = normalizeOrder(updated);
+        
+        if (orderType === 'customer') {
+          setCustomerOrders(prev => 
+            prev.map(o => (o.id === orderId ? { ...o, ...normalizedUpdate } : o))
+          );
+        } else {
+          setAdminOrders(prev => 
+            prev.map(o => (o.id === orderId ? { ...o, ...normalizedUpdate } : o))
+          );
+        }
+      } else if (response.data?.success) {
+        // If success but no data, fetch fresh
+        await fetchOrders();
+      } else {
+        console.error('Unexpected response:', response.data);
+        throw new Error('Invalid response from server');
+      }
+
+      alert(`Order status updated to ${status.charAt(0).toUpperCase() + status.slice(1)}!`);
+
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      console.error('Error details:', error.response?.data);
+      
+      // Roll back optimistic update on failure
+      if (orderType === 'customer') {
+        setCustomerOrders(previousCustomerOrders);
+      } else {
+        setAdminOrders(previousAdminOrders);
+      }
+      alert(`Failed to update order status: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
 
   // ============================================================
   // DELETE ORDER
@@ -361,8 +362,8 @@ const OrdersList: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'approved': 
-      case 'completed': return 'bg-green-100 text-green-800';
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'completed': return 'bg-purple-100 text-purple-800';
       case 'processing': return 'bg-blue-100 text-blue-800';
       case 'cancelled': 
       case 'rejected': return 'bg-red-100 text-red-800';
@@ -374,7 +375,6 @@ const OrdersList: React.FC = () => {
   const getPaymentStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'pending': return 'bg-orange-100 text-orange-800';
-      case 'completed':
       case 'paid': return 'bg-green-100 text-green-800';
       case 'failed': 
       case 'blocked': return 'bg-red-100 text-red-800';
@@ -413,15 +413,14 @@ const OrdersList: React.FC = () => {
   // ============================================================
   // RENDER HELPERS
   // ============================================================
- // Update the renderStatusBadge function
-const renderStatusBadge = (order: any) => {
-  const status = order.status || 'pending'; // Changed from order_status to status
-  return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </span>
-  );
-};
+  const renderStatusBadge = (order: any) => {
+    const status = order.status || 'pending';
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
+    );
+  };
 
   const renderPaymentStatusBadge = (order: any) => {
     const status = order.payment_status || 'pending';
@@ -432,32 +431,44 @@ const renderStatusBadge = (order: any) => {
     );
   };
 
- // Update the renderStatusActions function
-const renderStatusActions = (order: any) => {
-  const orderId = order.id;
-  const currentStatus = order.status || 'pending'; // Changed from order_status to status
-  const isUpdating = updatingOrderId === orderId;
+  // ─── Status Actions Dropdown ──────────────────────────────
+  const renderStatusActions = (order: any) => {
+    const orderId = order.id;
+    const currentStatus = order.status || 'pending';
+    const isUpdating = updatingOrderId === orderId;
 
-  return (
-    <div className="flex flex-col gap-1">
-      <select
-        value={currentStatus}
-        onChange={(e) => updateOrderStatus(orderId, e.target.value)}
-        disabled={isUpdating}
-        className="text-xs border rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#0c2d67] disabled:opacity-50 min-w-[100px]"
-      >
-        <option value="pending">Pending</option>
-        <option value="approved">Approved</option>
-        <option value="rejected">Rejected</option>
-      </select>
-      {isUpdating && (
-        <span className="text-xs text-gray-400 flex items-center gap-1">
-          <RefreshCw size={12} className="animate-spin" /> Updating...
-        </span>
-      )}
-    </div>
-  );
-};
+    return (
+      <div className="flex flex-col gap-1">
+        <select
+          value={currentStatus}
+          onChange={(e) => updateOrderStatus(orderId, e.target.value)}
+          disabled={isUpdating}
+          className={`text-xs border rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#0c2d67] disabled:opacity-50 min-w-[100px]
+            ${currentStatus === 'pending' ? 'border-yellow-400 bg-yellow-50' :
+              currentStatus === 'approved' ? 'border-green-400 bg-green-50' :
+              currentStatus === 'completed' ? 'border-purple-400 bg-purple-50' :
+              currentStatus === 'processing' ? 'border-blue-400 bg-blue-50' :
+              currentStatus === 'rejected' ? 'border-red-400 bg-red-50' :
+              currentStatus === 'cancelled' ? 'border-red-400 bg-red-50' :
+              'border-gray-300 bg-gray-50'
+            }`}
+        >
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="processing">Processing</option>
+          <option value="completed">Completed</option>
+          <option value="rejected">Rejected</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        {isUpdating && (
+          <span className="text-xs text-gray-400 flex items-center gap-1">
+            <RefreshCw size={12} className="animate-spin" /> Updating...
+          </span>
+        )}
+      </div>
+    );
+  };
+
   // ============================================================
   // RENDER
   // ============================================================
@@ -522,7 +533,7 @@ const renderStatusActions = (order: any) => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow p-4 text-center">
             <p className="text-2xl font-bold text-[#0c2d67]">{currentOrders.length}</p>
             <p className="text-sm text-gray-500">Total Orders</p>
@@ -536,8 +547,12 @@ const renderStatusActions = (order: any) => {
             <p className="text-sm text-gray-500">Approved</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4 text-center">
-            <p className="text-2xl font-bold text-red-600">{getStatusCount('rejected')}</p>
-            <p className="text-sm text-gray-500">Rejected</p>
+            <p className="text-2xl font-bold text-purple-600">{getStatusCount('completed')}</p>
+            <p className="text-sm text-gray-500">Completed</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 text-center">
+            <p className="text-2xl font-bold text-red-600">{getStatusCount('rejected') + getStatusCount('cancelled')}</p>
+            <p className="text-sm text-gray-500">Rejected/Cancelled</p>
           </div>
         </div>
 
@@ -554,7 +569,7 @@ const renderStatusActions = (order: any) => {
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              {['all', 'pending', 'approved', 'rejected'].map((status) => (
+              {['all', 'pending', 'approved', 'processing', 'completed', 'rejected', 'cancelled'].map((status) => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}

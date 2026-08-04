@@ -1,3 +1,4 @@
+// app/admin/orders.tsx
 import React, { useState, useEffect } from 'react';
 import { 
   Eye, 
@@ -11,7 +12,10 @@ import {
   Truck,
   PackageCheck,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Check,
+  X,
+  Edit
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -47,8 +51,7 @@ interface Order {
   grand_total: number;
   payment_method: string;
   payment_status: 'pending' | 'paid' | 'failed';
-  status: string;
-  order_status: 'pending' | 'confirmed' | 'team_assigned' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'pending' | 'approved' | 'rejected' | 'processing' | 'completed' | 'cancelled';
   notes: string;
   created_at: string;
   updated_at: string;
@@ -74,10 +77,11 @@ const AdminOrders: React.FC = () => {
   const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [ordersPerPage] = useState(10);
+  const [processing, setProcessing] = useState<number | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState<number | null>(null);
 
   const API_BASE_URL = 'http://localhost:5000';
 
-  // Fetch all orders
   useEffect(() => {
     fetchOrders();
   }, []);
@@ -93,26 +97,21 @@ const AdminOrders: React.FC = () => {
         return;
       }
 
-      console.log('📦 Fetching orders from:', `${API_BASE_URL}/api/checkout/orders/all`);
-      console.log('📦 Using token:', token.substring(0, 20) + '...');
+      const endpoint = `${API_BASE_URL}/customer-orders`;
+      console.log('📦 Fetching orders from:', endpoint);
       
-      const response = await axios.get(`${API_BASE_URL}/api/checkout/orders/all`, {
+      const response = await axios.get(endpoint, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
-      console.log('📦 Orders response status:', response.status);
-      console.log('📦 Orders response data:', response.data);
 
       if (response.data.success) {
-        // Map the data to ensure order_status is available
         const ordersWithStatus = response.data.data.map((order: any) => ({
           ...order,
-          order_status: order.order_status || order.status || 'pending',
-          // Ensure items is parsed
-          items: typeof order.items === 'string' ? JSON.parse(order.items || '[]') : order.items || []
+          status: order.status || 'pending',
+          items: Array.isArray(order.items) ? order.items : (typeof order.items === 'string' ? JSON.parse(order.items || '[]') : [])
         }));
         setOrders(ordersWithStatus);
         setError(null);
@@ -122,44 +121,30 @@ const AdminOrders: React.FC = () => {
       }
     } catch (err: any) {
       console.error('❌ Error fetching orders:', err);
-      
       let errorMessage = 'Error fetching orders';
       if (err.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        console.error('Error response:', err.response.data);
-        console.error('Error status:', err.response.status);
         errorMessage = err.response.data?.message || `Server error: ${err.response.status}`;
       } else if (err.request) {
-        // The request was made but no response was received
-        console.error('No response received:', err.request);
         errorMessage = 'No response from server. Please check if the server is running.';
       } else {
-        // Something happened in setting up the request that triggered an Error
         errorMessage = err.message || 'Unknown error occurred';
       }
-      
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  // Update order status
-  const updateOrderStatus = async (orderId: number, newStatus: string) => {
+  const approveOrder = async (orderId: number) => {
+    if (!confirm('Are you sure you want to approve this order?')) return;
+    
     try {
+      setProcessing(orderId);
       const token = localStorage.getItem('token');
       
-      if (!token) {
-        alert('Please login again');
-        return;
-      }
-
-      console.log('📦 Updating order status:', orderId, 'to:', newStatus);
-      
       const response = await axios.put(
-        `${API_BASE_URL}/api/checkout/order/${orderId}/status`,
-        { orderStatus: newStatus },
+        `${API_BASE_URL}/customer-orders/${orderId}/status`,
+        { status: 'approved' },
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -168,41 +153,87 @@ const AdminOrders: React.FC = () => {
         }
       );
 
-      console.log('📦 Update response:', response.data);
+      if (response.data.success) {
+        await fetchOrders();
+        alert('✅ Order approved successfully!');
+      } else {
+        alert('Failed to approve order: ' + (response.data.message || 'Unknown error'));
+      }
+    } catch (err: any) {
+      console.error('❌ Error approving order:', err);
+      alert('Failed to approve order: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const rejectOrder = async (orderId: number) => {
+    if (!confirm('Are you sure you want to reject this order?')) return;
+    
+    try {
+      setProcessing(orderId);
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.put(
+        `${API_BASE_URL}/customer-orders/${orderId}/status`,
+        { status: 'rejected' },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.success) {
+        await fetchOrders();
+        alert('❌ Order rejected successfully!');
+      } else {
+        alert('Failed to reject order: ' + (response.data.message || 'Unknown error'));
+      }
+    } catch (err: any) {
+      console.error('❌ Error rejecting order:', err);
+      alert('Failed to reject order: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const updateOrderStatus = async (orderId: number, newStatus: string) => {
+    if (!confirm(`Are you sure you want to change this order status to ${newStatus}?`)) return;
+    
+    try {
+      setUpdatingStatus(orderId);
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.put(
+        `${API_BASE_URL}/customer-orders/${orderId}/status`,
+        { status: newStatus },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
       if (response.data.success) {
         await fetchOrders();
         if (selectedOrder?.id === orderId) {
-          setSelectedOrder(prev => prev ? { ...prev, order_status: newStatus as Order['order_status'] } : null);
+          setSelectedOrder(prev => prev ? { ...prev, status: newStatus as Order['status'] } : null);
         }
-        alert('Order status updated successfully!');
+        alert(`✅ Order status updated to ${newStatus}!`);
       } else {
         alert('Failed to update order status: ' + (response.data.message || 'Unknown error'));
       }
     } catch (err: any) {
       console.error('❌ Error updating order status:', err);
-      alert('Failed to update order status: ' + (err.response?.data?.message || err.message || 'Unknown error'));
+      alert('Failed to update order status: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setUpdatingStatus(null);
     }
   };
 
-  // Test database connection
-  const testDatabase = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/api/checkout/test-db`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      console.log('📦 Database test result:', response.data);
-      alert(`Database connected: ${response.data.connected}\nTotal orders: ${response.data.totalOrders}`);
-    } catch (err) {
-      console.error('❌ Database test failed:', err);
-      alert('Database test failed. Check console for details.');
-    }
-  };
-
-  // Filter orders
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
       order.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -210,19 +241,17 @@ const AdminOrders: React.FC = () => {
       order.customer_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.customer_phone?.includes(searchTerm);
     
-    const matchesStatus = statusFilter === 'all' || order.order_status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     const matchesPayment = paymentFilter === 'all' || order.payment_status === paymentFilter;
     
     return matchesSearch && matchesStatus && matchesPayment;
   });
 
-  // Pagination
   const indexOfLastOrder = currentPage * ordersPerPage;
   const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
   const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
 
-  // Toggle row expansion
   const toggleRow = (orderId: number) => {
     setExpandedRows(prev => ({
       ...prev,
@@ -230,21 +259,19 @@ const AdminOrders: React.FC = () => {
     }));
   };
 
-  // View order details
   const viewOrderDetails = (order: Order) => {
     setSelectedOrder(order);
     setIsModalOpen(true);
   };
 
-  // Status badge component
   const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-    const statusConfig: Record<string, { color: string; icon: React.ComponentType<{ className?: string }> }> = {
-      pending: { color: 'bg-yellow-100 text-yellow-800', icon: ClockIcon },
-      confirmed: { color: 'bg-blue-100 text-blue-800', icon: CheckCircle },
-      team_assigned: { color: 'bg-purple-100 text-purple-800', icon: Truck },
-      in_progress: { color: 'bg-indigo-100 text-indigo-800', icon: PackageCheck },
-      completed: { color: 'bg-green-100 text-green-800', icon: CheckCircle },
-      cancelled: { color: 'bg-red-100 text-red-800', icon: XCircle }
+    const statusConfig: Record<string, { color: string; icon: React.ComponentType<{ className?: string }>; label: string }> = {
+      pending: { color: 'bg-yellow-100 text-yellow-800', icon: ClockIcon, label: 'Pending' },
+      approved: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Approved' },
+      rejected: { color: 'bg-red-100 text-red-800', icon: XCircle, label: 'Rejected' },
+      processing: { color: 'bg-blue-100 text-blue-800', icon: PackageCheck, label: 'Processing' },
+      completed: { color: 'bg-purple-100 text-purple-800', icon: CheckCircle, label: 'Completed' },
+      cancelled: { color: 'bg-gray-100 text-gray-800', icon: XCircle, label: 'Cancelled' }
     };
 
     const config = statusConfig[status] || statusConfig.pending;
@@ -253,17 +280,17 @@ const AdminOrders: React.FC = () => {
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
         <Icon className="w-3 h-3 mr-1" />
-        {status.replace('_', ' ').toUpperCase()}
+        {config.label}
       </span>
     );
   };
 
-  // Payment status badge
   const PaymentBadge: React.FC<{ status: string }> = ({ status }) => {
     const config: Record<string, string> = {
       paid: 'bg-green-100 text-green-800',
       pending: 'bg-yellow-100 text-yellow-800',
-      failed: 'bg-red-100 text-red-800'
+      failed: 'bg-red-100 text-red-800',
+      blocked: 'bg-gray-100 text-gray-800'
     };
 
     return (
@@ -273,7 +300,6 @@ const AdminOrders: React.FC = () => {
     );
   };
 
-  // Parse items safely
   const parseItems = (items: any): OrderItem[] => {
     if (Array.isArray(items)) return items;
     if (typeof items === 'string') {
@@ -285,6 +311,16 @@ const AdminOrders: React.FC = () => {
     }
     return [];
   };
+
+  // ─── Status options for dropdown ──────────────────────────────────────────
+  const statusOptions = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'approved', label: 'Approved' },
+    { value: 'rejected', label: 'Rejected' },
+    { value: 'processing', label: 'Processing' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' }
+  ];
 
   if (loading) {
     return (
@@ -304,21 +340,13 @@ const AdminOrders: React.FC = () => {
           <AlertCircle className="h-12 w-12 mx-auto mb-4" />
           <p className="font-semibold">Error loading orders</p>
           <p className="text-sm mt-2">{error}</p>
-          <div className="mt-4 flex flex-col items-center space-y-2">
-            <button 
-              onClick={fetchOrders}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Retry
-            </button>
-            <button 
-              onClick={testDatabase}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center"
-            >
-              Test Database
-            </button>
-          </div>
+          <button 
+            onClick={fetchOrders}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center mx-auto"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -344,19 +372,12 @@ const AdminOrders: React.FC = () => {
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
             </button>
-            <button 
-              onClick={testDatabase}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center text-sm"
-            >
-              Test DB
-            </button>
           </div>
         </div>
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
-            {/* Search */}
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
@@ -368,7 +389,6 @@ const AdminOrders: React.FC = () => {
               />
             </div>
 
-            {/* Status Filter */}
             <div className="flex items-center space-x-2">
               <Filter className="text-gray-400 w-5 h-5" />
               <select
@@ -378,15 +398,14 @@ const AdminOrders: React.FC = () => {
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="team_assigned">Team Assigned</option>
-                <option value="in_progress">In Progress</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="processing">Processing</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
 
-            {/* Payment Filter */}
             <div>
               <select
                 value={paymentFilter}
@@ -408,27 +427,13 @@ const AdminOrders: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Order Details
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Event
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Payment
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Details</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -439,13 +444,6 @@ const AdminOrders: React.FC = () => {
                         <PackageCheck className="w-12 h-12 text-gray-300 mb-2" />
                         <p>No orders found</p>
                         <p className="text-sm text-gray-400 mt-1">Orders will appear here once customers place orders.</p>
-                        <button 
-                          onClick={fetchOrders}
-                          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-                        >
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Refresh
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -459,18 +457,11 @@ const AdminOrders: React.FC = () => {
                               onClick={() => toggleRow(order.id)}
                               className="mr-2 text-gray-400 hover:text-gray-600"
                             >
-                              {expandedRows[order.id] ? 
-                                <ChevronUp className="w-4 h-4" /> : 
-                                <ChevronDown className="w-4 h-4" />
-                              }
+                              {expandedRows[order.id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                             </button>
                             <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                #{order.order_number}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {new Date(order.created_at).toLocaleDateString()}
-                              </div>
+                              <div className="text-sm font-medium text-gray-900">#{order.order_number}</div>
+                              <div className="text-xs text-gray-500">{new Date(order.created_at).toLocaleDateString()}</div>
                             </div>
                           </div>
                         </td>
@@ -480,31 +471,78 @@ const AdminOrders: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{order.event_type || 'N/A'}</div>
-                          <div className="text-xs text-gray-500">
-                            {order.event_date && new Date(order.event_date).toLocaleDateString()}
-                          </div>
+                          <div className="text-xs text-gray-500">{order.event_date && new Date(order.event_date).toLocaleDateString()}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            ₹{Number(order.grand_total).toFixed(2)}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {parseItems(order.items).length} items
-                          </div>
+                          <div className="text-sm font-medium text-gray-900">₹{Number(order.grand_total).toFixed(2)}</div>
+                          <div className="text-xs text-gray-500">{parseItems(order.items).length} items</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <StatusBadge status={order.order_status} />
+                          {/* ─── Status Dropdown ───────────────────────────────────── */}
+                          <div className="relative">
+                            <select
+                              value={order.status}
+                              onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                              disabled={updatingStatus === order.id}
+                              className={`px-3 py-1.5 pr-8 rounded-lg text-xs font-medium border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                                order.status === 'pending' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
+                                order.status === 'approved' ? 'bg-green-100 text-green-800 border-green-300' :
+                                order.status === 'rejected' ? 'bg-red-100 text-red-800 border-red-300' :
+                                order.status === 'processing' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                                order.status === 'completed' ? 'bg-purple-100 text-purple-800 border-purple-300' :
+                                'bg-gray-100 text-gray-800 border-gray-300'
+                              } ${updatingStatus === order.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                            >
+                              {statusOptions.map((option) => (
+                                <option key={option.value} value={option.value} className="bg-white text-gray-900">
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
+                              <ChevronDown className="h-4 w-4 text-gray-400" />
+                            </div>
+                            {updatingStatus === order.id && (
+                              <div className="absolute right-0 -top-6">
+                                <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <PaymentBadge status={order.payment_status} />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={() => viewOrderDetails(order)}
-                            className="text-blue-600 hover:text-blue-800 transition-colors"
-                          >
-                            <Eye className="w-5 h-5" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {/* Approve/Reject buttons - only for pending orders */}
+                            {order.status === 'pending' && (
+                              <>
+                                <button
+                                  onClick={() => approveOrder(order.id)}
+                                  disabled={processing === order.id}
+                                  className="p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors disabled:opacity-50"
+                                  title="Approve Order"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => rejectOrder(order.id)}
+                                  disabled={processing === order.id}
+                                  className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50"
+                                  title="Reject Order"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                            <button
+                              onClick={() => viewOrderDetails(order)}
+                              className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                              title="View Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                       {expandedRows[order.id] && (
@@ -537,9 +575,7 @@ const AdminOrders: React.FC = () => {
                                   <strong>Subtotal:</strong> ₹{Number(order.subtotal).toFixed(2)}<br />
                                   <strong>Delivery:</strong> ₹{Number(order.delivery_charge).toFixed(2)}<br />
                                   <strong>GST:</strong> ₹{Number(order.gst).toFixed(2)}<br />
-                                  {order.coupon_discount > 0 && (
-                                    <><strong>Discount:</strong> -₹{Number(order.coupon_discount).toFixed(2)}<br /></>
-                                  )}
+                                  {order.coupon_discount > 0 && <><strong>Discount:</strong> -₹{Number(order.coupon_discount).toFixed(2)}<br /></>}
                                   <strong className="text-blue-600">Total:</strong> ₹{Number(order.grand_total).toFixed(2)}
                                 </p>
                               </div>
@@ -554,7 +590,6 @@ const AdminOrders: React.FC = () => {
             </table>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="px-6 py-4 border-t border-gray-200">
               <div className="flex items-center justify-between">
@@ -590,14 +625,9 @@ const AdminOrders: React.FC = () => {
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Order #{selectedOrder.order_number}</h2>
-                <p className="text-sm text-gray-600">
-                  {new Date(selectedOrder.created_at).toLocaleString()}
-                </p>
+                <p className="text-sm text-gray-600">{new Date(selectedOrder.created_at).toLocaleString()}</p>
               </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
+              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                 <XCircle className="w-6 h-6 text-gray-500" />
               </button>
             </div>
@@ -641,14 +671,15 @@ const AdminOrders: React.FC = () => {
                     <div>
                       <label className="text-sm text-gray-600 block mb-1">Order Status</label>
                       <select
-                        value={selectedOrder.order_status}
+                        value={selectedOrder.status}
                         onChange={(e) => updateOrderStatus(selectedOrder.id, e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        disabled={updatingStatus === selectedOrder.id}
                       >
                         <option value="pending">Pending</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="team_assigned">Team Assigned</option>
-                        <option value="in_progress">In Progress</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="processing">Processing</option>
                         <option value="completed">Completed</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
@@ -666,9 +697,7 @@ const AdminOrders: React.FC = () => {
                     <strong>Subtotal:</strong> ₹{Number(selectedOrder.subtotal).toFixed(2)}<br />
                     <strong>Delivery:</strong> ₹{Number(selectedOrder.delivery_charge).toFixed(2)}<br />
                     <strong>GST:</strong> ₹{Number(selectedOrder.gst).toFixed(2)}<br />
-                    {selectedOrder.coupon_discount > 0 && (
-                      <><strong>Discount:</strong> -₹{Number(selectedOrder.coupon_discount).toFixed(2)}<br /></>
-                    )}
+                    {selectedOrder.coupon_discount > 0 && <><strong>Discount:</strong> -₹{Number(selectedOrder.coupon_discount).toFixed(2)}<br /></>}
                     <strong className="text-blue-600">Grand Total:</strong> ₹{Number(selectedOrder.grand_total).toFixed(2)}
                   </p>
                 </div>
@@ -701,21 +730,15 @@ const AdminOrders: React.FC = () => {
                 </div>
               </div>
 
-              {/* Special Instructions */}
               {selectedOrder.special_instructions && (
                 <div className="mb-6">
                   <h3 className="font-medium text-gray-700 mb-2">Special Instructions</h3>
-                  <p className="text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
-                    {selectedOrder.special_instructions}
-                  </p>
+                  <p className="text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">{selectedOrder.special_instructions}</p>
                 </div>
               )}
 
               <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
+                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                   Close
                 </button>
               </div>
