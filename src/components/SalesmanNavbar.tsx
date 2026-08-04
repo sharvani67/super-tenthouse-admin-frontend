@@ -1,59 +1,53 @@
-// components/Navbar.tsx
+// components/SalesmanNavbar.tsx
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
-  Home, 
   Package, 
-  Users, 
-  Settings, 
-  LogOut,
+  LogOut, 
+  User,
+  LayoutDashboard,
+  ShoppingBag,
   Menu,
   X,
-  ChevronDown,
-  ShoppingBag,
-  Gift,
-  LayoutGrid,
-  Plus,
-  ShoppingCart,
-  Tag // Added for Coupons
+  ChevronDown
 } from 'lucide-react';
 import logo from '@/assets/iiiqbetslogo.png';
 
-const Navbar = () => {
+interface SalesmanNavbarProps {
+  userName?: string;
+}
+
+const SalesmanNavbar: React.FC<SalesmanNavbarProps> = ({ userName }) => {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    navigate('/');
+    localStorage.removeItem('user');
+    localStorage.removeItem('role');
+    navigate('/admin-login');
   };
 
   const navItems = [
-    { name: 'Dashboard', path: '/admin/dashboard', icon: Home },
-    { name: 'Orders', path: '/admin/orders', icon: ShoppingBag },
-    { name: 'Categories', path: '/admin-categories', icon: LayoutGrid },
-    { name: 'Products', path: '/admin-products', icon: ShoppingBag },
-    { name: 'Packages', path: '/admin/packages', icon: Gift },
-    { name: 'Add-Ons', path: '/admin-addons', icon: Plus },
-    { name: 'Coupons', path: '/admin/coupons', icon: Tag }, // Added Coupons
-    { name: 'Users', path: '/users', icon: Users },
+    { name: 'Dashboard', path: '/salesman/dashboard', icon: LayoutDashboard },
+    { name: 'Orders', path: '/salesman/orders', icon: ShoppingBag },
   ];
 
   return (
     <nav className="bg-[#0c2d67] text-white shadow-lg sticky top-0 z-50">
-      <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center space-x-3">
-            <div className="bg-white/10 p-1 rounded-lg shadow-lg shadow-black/20 backdrop-blur-sm">
+            <div className="bg-white/10 p-1.5 rounded-lg shadow-lg shadow-black/20 backdrop-blur-sm">
               <img 
                 src={logo} 
                 alt="Logo" 
-                className="h-10 w-10 object-contain drop-shadow-lg filter brightness-0 invert" 
+                className="h-8 w-8 object-contain drop-shadow-lg filter brightness-0 invert" 
               />
             </div>
-            <span className="text-xl font-bold drop-shadow-lg">Admin Panel</span>
+            <span className="text-xl font-bold drop-shadow-lg">Salesman Panel</span>
           </div>
 
           {/* Desktop Navigation */}
@@ -76,23 +70,24 @@ const Navbar = () => {
                 className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors"
               >
                 <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shadow-lg">
-                  <span className="font-semibold">A</span>
+                  <User size={16} className="text-white" />
                 </div>
+                <span className="text-sm hidden lg:inline">{userName || 'Salesman'}</span>
                 <ChevronDown size={16} />
               </button>
 
               {isDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-lg shadow-xl py-2 border">
-                  <Link
-                    to="/profile"
-                    className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 transition-colors"
-                  >
-                    <Settings size={16} />
-                    <span>Profile Settings</span>
-                  </Link>
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">{userName || 'Salesman'}</p>
+                    <p className="text-xs text-gray-500">Salesman</p>
+                  </div>
                   <button
-                    onClick={handleLogout}
-                    className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 transition-colors w-full text-left"
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      handleLogout();
+                    }}
+                    className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 transition-colors w-full text-left text-red-600"
                   >
                     <LogOut size={16} />
                     <span>Logout</span>
@@ -127,12 +122,17 @@ const Navbar = () => {
                 <span>{item.name}</span>
               </Link>
             ))}
+            <div className="border-t border-white/10 my-2"></div>
+            <div className="px-4 py-2">
+              <p className="text-sm font-medium text-white/80">{userName || 'Salesman'}</p>
+              <p className="text-xs text-white/50">Salesman</p>
+            </div>
             <button
               onClick={() => {
                 handleLogout();
                 setIsMobileMenuOpen(false);
               }}
-              className="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-white/10 transition-colors w-full text-left"
+              className="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-white/10 transition-colors w-full text-left text-red-300"
             >
               <LogOut size={18} />
               <span>Logout</span>
@@ -144,4 +144,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar;
+export default SalesmanNavbar;
