@@ -5,7 +5,7 @@ import BASE_URL from '@/Config/Api';
 import { 
   Plus, Minus, ShoppingCart, X, ChevronLeft, ChevronRight, ArrowLeft, 
   Printer, Download, FileText, User, Phone, Mail, Calendar, 
-  Tag, Package, IndianRupee, CreditCard, Building, MapPin, Trash2, CheckCircle, ChevronUp
+  Tag, Package, IndianRupee, CreditCard, Building, MapPin, Trash2, CheckCircle, ChevronUp, Home, Navigation
 } from 'lucide-react';
 import Navbar from './Navbar';
 
@@ -14,6 +14,14 @@ interface User {
   name: string;
   email: string;
   phone: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+  avatar?: string | null;
+  is_verified?: number;
 }
 
 interface Product {
@@ -59,6 +67,7 @@ const CreateOrder: React.FC = () => {
   
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUserDetails, setSelectedUserDetails] = useState<User | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -72,6 +81,7 @@ const CreateOrder: React.FC = () => {
   const [orderNumber, setOrderNumber] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
+  const [loadingUserDetails, setLoadingUserDetails] = useState(false);
 
   // Generate Order Number
   const generateOrderNumber = () => {
@@ -102,7 +112,11 @@ const CreateOrder: React.FC = () => {
         
         if (userId) {
           const user = response.data.data.find((u: User) => u.id === parseInt(userId));
-          if (user) setSelectedUser(user);
+          if (user) {
+            setSelectedUser(user);
+            // Fetch full details for the selected user
+            fetchUserDetails(user.id);
+          }
         }
       } catch (error) {
         console.error('Error fetching users:', error);
@@ -111,6 +125,36 @@ const CreateOrder: React.FC = () => {
     };
     fetchUsers();
   }, [userId]);
+
+  // Fetch full user details including address
+  const fetchUserDetails = async (id: number) => {
+    setLoadingUserDetails(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${BASE_URL}/api/customers/details/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSelectedUserDetails(response.data.data);
+    } catch (error) {
+      console.error('Error fetching user details:', error);
+      // Fallback: use the basic user data
+      setSelectedUserDetails(selectedUser);
+    } finally {
+      setLoadingUserDetails(false);
+    }
+  };
+
+  // Handle user selection
+  const handleUserSelect = async (userId: string) => {
+    const user = users.find(u => u.id === parseInt(userId));
+    if (user) {
+      setSelectedUser(user);
+      await fetchUserDetails(user.id);
+    } else {
+      setSelectedUser(null);
+      setSelectedUserDetails(null);
+    }
+  };
 
   // Fetch products
   useEffect(() => {
@@ -298,6 +342,19 @@ const CreateOrder: React.FC = () => {
     setShowProducts(false);
   };
 
+  // Get address display text
+  const getFullAddress = (user: User | null) => {
+    if (!user) return 'No address available';
+    const parts = [];
+    if (user.address_line1) parts.push(user.address_line1);
+    if (user.address_line2) parts.push(user.address_line2);
+    if (user.city) parts.push(user.city);
+    if (user.state) parts.push(user.state);
+    if (user.pincode) parts.push(user.pincode);
+    if (user.country) parts.push(user.country);
+    return parts.length > 0 ? parts.join(', ') : 'No address available';
+  };
+
   if (showInvoice && placedOrder) {
     const invoiceItems = cart.length > 0 ? cart : placedOrder.order?.items || [];
     
@@ -358,7 +415,7 @@ const CreateOrder: React.FC = () => {
               </div>
             </div>
 
-            {/* Invoice Header - Print View (Black text on white background) */}
+            {/* Invoice Header - Print View */}
             <div className="hidden print:block p-6 border-b-2 border-gray-300">
               <div className="flex justify-between items-start">
                 <div>
@@ -385,6 +442,15 @@ const CreateOrder: React.FC = () => {
                     <p className="text-gray-800"><strong>Name:</strong> {selectedUser?.name}</p>
                     <p className="text-gray-800"><strong>Email:</strong> {selectedUser?.email}</p>
                     <p className="text-gray-800"><strong>Phone:</strong> {selectedUser?.phone}</p>
+                    {/* Display Address in Invoice */}
+                    {(selectedUserDetails?.address_line1 || selectedUser?.address_line1) && (
+                      <p className="text-gray-800 flex items-start gap-2 mt-2">
+                        <MapPin size={16} className="text-gray-500 mt-0.5 flex-shrink-0" />
+                        <span>
+                          <strong>Address:</strong> {getFullAddress(selectedUserDetails || selectedUser)}
+                        </span>
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
@@ -531,10 +597,7 @@ const CreateOrder: React.FC = () => {
           <select
             className="w-full md:w-96 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0c2d67]"
             value={selectedUser?.id || ''}
-            onChange={(e) => {
-              const user = users.find(u => u.id === parseInt(e.target.value));
-              setSelectedUser(user || null);
-            }}
+            onChange={(e) => handleUserSelect(e.target.value)}
           >
             <option value="">Select a customer...</option>
             {users.map(user => (
@@ -543,20 +606,80 @@ const CreateOrder: React.FC = () => {
               </option>
             ))}
           </select>
+          
           {selectedUser && (
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg grid grid-cols-1 md:grid-cols-3 gap-4">
-              <p className="text-sm text-gray-700 flex items-center gap-2">
-                <User size={16} className="text-blue-600" />
-                <span className="font-semibold">Name:</span> {selectedUser.name}
-              </p>
-              <p className="text-sm text-gray-700 flex items-center gap-2">
-                <Mail size={16} className="text-blue-600" />
-                <span className="font-semibold">Email:</span> {selectedUser.email}
-              </p>
-              <p className="text-sm text-gray-700 flex items-center gap-2">
-                <Phone size={16} className="text-blue-600" />
-                <span className="font-semibold">Phone:</span> {selectedUser.phone}
-              </p>
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <p className="text-sm text-gray-700 flex items-center gap-2">
+                  <User size={16} className="text-blue-600" />
+                  <span className="font-semibold">Name:</span> {selectedUser.name}
+                </p>
+                <p className="text-sm text-gray-700 flex items-center gap-2">
+                  <Mail size={16} className="text-blue-600" />
+                  <span className="font-semibold">Email:</span> {selectedUser.email}
+                </p>
+                <p className="text-sm text-gray-700 flex items-center gap-2">
+                  <Phone size={16} className="text-blue-600" />
+                  <span className="font-semibold">Phone:</span> {selectedUser.phone}
+                </p>
+              </div>
+              
+              {/* ─── ADDRESS SECTION - NOW DISPLAYED ────────────────────────── */}
+              <div className="mt-3 pt-3 border-t border-blue-200">
+                <p className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+                  <MapPin size={16} className="text-blue-600" />
+                  Address Details
+                </p>
+                {loadingUserDetails ? (
+                  <p className="text-sm text-gray-500">Loading address...</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-500 min-w-[70px]">Address 1:</span>
+                      <span className="text-gray-800">
+                        {selectedUserDetails?.address_line1 || selectedUser?.address_line1 || 'Not provided'}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-500 min-w-[70px]">Address 2:</span>
+                      <span className="text-gray-800">
+                        {selectedUserDetails?.address_line2 || selectedUser?.address_line2 || 'Not provided'}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-500 min-w-[70px]">City:</span>
+                      <span className="text-gray-800">
+                        {selectedUserDetails?.city || selectedUser?.city || 'Not provided'}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-500 min-w-[70px]">State:</span>
+                      <span className="text-gray-800">
+                        {selectedUserDetails?.state || selectedUser?.state || 'Not provided'}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-500 min-w-[70px]">Pincode:</span>
+                      <span className="text-gray-800">
+                        {selectedUserDetails?.pincode || selectedUser?.pincode || 'Not provided'}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-500 min-w-[70px]">Country:</span>
+                      <span className="text-gray-800">
+                        {selectedUserDetails?.country || selectedUser?.country || 'India'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {/* Full address display */}
+                <div className="mt-2 p-2 bg-white rounded border border-blue-200">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Full Address:</span>{' '}
+                    {getFullAddress(selectedUserDetails || selectedUser)}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
         </div>
