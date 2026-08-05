@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import BASE_URL from '@/Config/Api';
 import { 
   Plus, Minus, ShoppingCart, X, ChevronLeft, ChevronRight, ArrowLeft, 
-  Printer, Download, FileText, User, Phone, Mail, Calendar, 
-  Tag, Package, IndianRupee, CreditCard, Building, MapPin, Trash2, CheckCircle, ChevronUp
+  Printer, FileText, User, Phone, Mail, Calendar, 
+  Package, CreditCard, Trash2, CheckCircle, UserCheck, ChevronUp
 } from 'lucide-react';
-import Navbar from './Navbar';
+import SalesNavbar from '@/components/SalesmanNavbar';
 
 interface User {
   id: number;
@@ -52,8 +52,7 @@ interface OrderResponse {
   };
 }
 
-const CreateOrder: React.FC = () => {
-  const { userId } = useParams<{ userId: string }>();
+const SalesmanCreateOrder: React.FC = () => {
   const navigate = useNavigate();
   const invoiceRef = useRef<HTMLDivElement>(null);
   
@@ -72,25 +71,32 @@ const CreateOrder: React.FC = () => {
   const [orderNumber, setOrderNumber] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
+  const [salesmanInfo, setSalesmanInfo] = useState<any>(null);
 
-  // Generate Order Number
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user.id) {
+      setSalesmanInfo(user);
+    } else {
+      navigate('/');
+    }
+  }, [navigate]);
+
   const generateOrderNumber = () => {
     const date = new Date();
     const year = date.getFullYear().toString().slice(-2);
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    return `INV-${year}${month}${day}-${random}`;
+    return `SALE-${year}${month}${day}-${random}`;
   };
 
-  // Show toast notification
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToastMessage(message);
     setToastType(type);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -99,20 +105,14 @@ const CreateOrder: React.FC = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         setUsers(response.data.data);
-        
-        if (userId) {
-          const user = response.data.data.find((u: User) => u.id === parseInt(userId));
-          if (user) setSelectedUser(user);
-        }
       } catch (error) {
         console.error('Error fetching users:', error);
         showToast('Failed to fetch users', 'error');
       }
     };
     fetchUsers();
-  }, [userId]);
+  }, []);
 
-  // Fetch products
   useEffect(() => {
     if (showProducts) {
       const fetchProducts = async () => {
@@ -231,6 +231,11 @@ const CreateOrder: React.FC = () => {
       return;
     }
 
+    if (!salesmanInfo) {
+      showToast('Salesman information not found', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem('token');
@@ -241,10 +246,14 @@ const CreateOrder: React.FC = () => {
           quantity: item.quantity,
           price: item.price
         })),
-        total_amount: calculateSubtotal()
+        total_amount: calculateSubtotal(),
+        salesman_id: salesmanInfo.id,
+        salesman_name: salesmanInfo.name || 'Salesman',
+        payment_method: 'cash',
+        notes: `Order created by salesman: ${salesmanInfo.name}`
       };
 
-      const response = await axios.post(`${BASE_URL}/api/orders`, orderData, {
+      const response = await axios.post(`${BASE_URL}/api/salesman-orders`, orderData, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -259,7 +268,7 @@ const CreateOrder: React.FC = () => {
       setOrderDate(new Date());
       setShowInvoice(true);
       
-      showToast('Order placed successfully! 🎉', 'success');
+      showToast('Salesman order placed successfully! 🎉', 'success');
     } catch (error: any) {
       console.error('Error placing order:', error);
       showToast(error.response?.data?.message || 'Failed to place order', 'error');
@@ -277,7 +286,11 @@ const CreateOrder: React.FC = () => {
     setPlacedOrder(null);
     setCart([]);
     setShowProducts(false);
-    navigate('/admin/orders');
+    navigate('/salesman/orders');
+  };
+
+  const handleBackOrder = () => {
+    navigate('/salesman/orders');
   };
 
   const nextImage = (productId: number, totalImages: number) => {
@@ -346,9 +359,8 @@ const CreateOrder: React.FC = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <h1 className="text-3xl font-bold">🏪 TentHouse</h1>
-                  <p className="text-blue-200 mt-1">123 Business Street, City</p>
-                  <p className="text-blue-200">Email: info@tenthouse.com</p>
-                  <p className="text-blue-200">Phone: +91 98765 43210</p>
+                  <p className="text-blue-200 mt-1">Salesman Order</p>
+                  <p className="text-sm text-blue-300">Created by: {salesmanInfo?.name}</p>
                 </div>
                 <div className="text-right">
                   <h2 className="text-4xl font-bold">INVOICE</h2>
@@ -363,9 +375,8 @@ const CreateOrder: React.FC = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900">TentHouse</h1>
-                  <p className="text-gray-700 mt-1">123 Business Street, City</p>
-                  <p className="text-gray-700">Email: info@tenthouse.com</p>
-                  <p className="text-gray-700">Phone: +91 98765 43210</p>
+                  <p className="text-gray-700 mt-1">Salesman Order</p>
+                  <p className="text-sm text-gray-600">Created by: {salesmanInfo?.name}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-semibold text-gray-800">#{placedOrder.order_number || orderNumber}</p>
@@ -393,6 +404,7 @@ const CreateOrder: React.FC = () => {
                     <p className="text-gray-800"><strong>Order ID:</strong> #{placedOrder.order_id}</p>
                     <p className="text-gray-800"><strong>Status:</strong> <span className="text-green-600">Confirmed</span></p>
                     <p className="text-gray-800"><strong>Payment:</strong> <span className="text-yellow-600">Pending</span></p>
+                    <p className="text-gray-800"><strong>Salesman:</strong> {salesmanInfo?.name}</p>
                   </div>
                 </div>
               </div>
@@ -480,7 +492,7 @@ const CreateOrder: React.FC = () => {
             </button>
             <button
               onClick={handleBackToOrders}
-              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
             >
               <FileText size={20} /> View All Orders
             </button>
@@ -492,7 +504,8 @@ const CreateOrder: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
+      <SalesNavbar />
+      
       {toastMessage && (
         <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg ${
           toastType === 'success' ? 'bg-green-500' : 
@@ -507,16 +520,24 @@ const CreateOrder: React.FC = () => {
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/admin/orders')}
+              onClick={handleBackOrder}
               className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-              title="Back to Users"
+              title="Back to Dashboard"
             >
               <ArrowLeft size={24} />
             </button>
-            <h1 className="text-2xl font-bold text-gray-900">Create New Order</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <UserCheck size={28} className="text-[#0c2d67]" />
+                Create Salesman Order
+              </h1>
+              <p className="text-gray-600 text-sm">
+                {salesmanInfo?.name ? `Salesman: ${salesmanInfo.name}` : 'Loading salesman info...'}
+              </p>
+            </div>
           </div>
           <button
-            onClick={() => navigate('/admin/orders')}
+            onClick={() => navigate('/salesman/orders')}
             className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
           >
             <FileText size={18} />
@@ -867,4 +888,4 @@ const CreateOrder: React.FC = () => {
   );
 };
 
-export default CreateOrder;
+export default SalesmanCreateOrder;

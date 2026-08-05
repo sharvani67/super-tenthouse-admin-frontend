@@ -26,7 +26,7 @@ const SalesmanNavbar: React.FC<SalesmanNavbarProps> = ({ userName }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('role');
-    navigate('/admin-login');
+    navigate('/');
   };
 
   const navItems = [

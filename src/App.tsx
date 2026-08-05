@@ -27,6 +27,8 @@ import SalesmanOrders from "./pages/salesman/orders";
 import SalesmanDashboard from "./pages/salesman/dashboard";
 // import AdminDashboard from "./components/AdminDashboard"
 // import ProfileSettings from "./components/ProfileSettings";
+import SalesmanCreateOrder from "@/pages/salesman/SalesmanCreateOrder";
+
 
 
 const queryClient = new QueryClient();
@@ -68,7 +70,9 @@ const App = () => (
               
 
               <Route path="/salesman/dashboard" element={<SalesmanDashboard />} />
-<Route path="/salesman/orders" element={<SalesmanOrders />} />
+              <Route path="/salesman/orders" element={<SalesmanOrders />} />
+              <Route path="/salesman/create-order" element={<SalesmanCreateOrder />} />
+
 
 
 
