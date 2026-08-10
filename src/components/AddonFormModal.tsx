@@ -57,7 +57,18 @@ const AddonFormModal: React.FC<AddonFormModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(form);
+    
+    // Prepare the data with proper types
+    const formData = {
+      name: form.name,
+      price: parseFloat(form.price) || 0,
+      icon: form.icon || '📦',
+      description: form.description || null,
+      category: form.category || 'General',
+      is_active: form.is_active ? 1 : 0 // Convert boolean to 1 or 0
+    };
+    
+    onSubmit(formData);
   };
 
   if (!isOpen) return null;
@@ -109,6 +120,7 @@ const AddonFormModal: React.FC<AddonFormModalProps> = ({
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 placeholder="Enter price"
                 className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
                 value={form.price}

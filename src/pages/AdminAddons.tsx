@@ -42,38 +42,69 @@ const AdminAddons = () => {
     fetchAddons();
   }, []);
 
-  const handleAddAddon = async (formData: any) => {
-    try {
-      setFormLoading(true);
-      await axios.post(`${BASE_URL}/api/addons`, formData);
-      await fetchAddons();
-      setIsModalOpen(false);
-      alert("Add-on Added Successfully");
-    } catch (err: any) {
-      console.log(err);
-      alert(err.response?.data?.error || "Failed to add add-on");
-    } finally {
-      setFormLoading(false);
-    }
-  };
+  // src/pages/AdminAddons.tsx
+// Update the handleAddAddon and handleEditAddon functions:
 
-  const handleEditAddon = async (formData: any) => {
-    if (!editingAddon) return;
+const handleAddAddon = async (formData: any) => {
+  try {
+    setFormLoading(true);
+    // Ensure is_active is sent as number
+    const dataToSend = {
+      ...formData,
+      is_active: formData.is_active ? 1 : 0
+    };
+    await axios.post(`${BASE_URL}/api/addons`, dataToSend);
+    await fetchAddons();
+    setIsModalOpen(false);
+    alert("Add-on Added Successfully");
+  } catch (err: any) {
+    console.log(err);
+    alert(err.response?.data?.error || "Failed to add add-on");
+  } finally {
+    setFormLoading(false);
+  }
+};
 
-    try {
-      setFormLoading(true);
-      await axios.put(`${BASE_URL}/api/addons/${editingAddon.id}`, formData);
-      await fetchAddons();
-      setEditingAddon(null);
-      setIsModalOpen(false);
-      alert("Add-on Updated Successfully");
-    } catch (err: any) {
-      console.log(err);
-      alert(err.response?.data?.error || "Failed to update add-on");
-    } finally {
-      setFormLoading(false);
-    }
-  };
+const handleEditAddon = async (formData: any) => {
+  if (!editingAddon) return;
+
+  try {
+    setFormLoading(true);
+    // Ensure is_active is sent as number
+    const dataToSend = {
+      ...formData,
+      is_active: formData.is_active ? 1 : 0
+    };
+    await axios.put(`${BASE_URL}/api/addons/${editingAddon.id}`, dataToSend);
+    await fetchAddons();
+    setEditingAddon(null);
+    setIsModalOpen(false);
+    alert("Add-on Updated Successfully");
+  } catch (err: any) {
+    console.log(err);
+    alert(err.response?.data?.error || "Failed to update add-on");
+  } finally {
+    setFormLoading(false);
+  }
+};
+
+  // const handleEditAddon = async (formData: any) => {
+  //   if (!editingAddon) return;
+
+  //   try {
+  //     setFormLoading(true);
+  //     await axios.put(`${BASE_URL}/api/addons/${editingAddon.id}`, formData);
+  //     await fetchAddons();
+  //     setEditingAddon(null);
+  //     setIsModalOpen(false);
+  //     alert("Add-on Updated Successfully");
+  //   } catch (err: any) {
+  //     console.log(err);
+  //     alert(err.response?.data?.error || "Failed to update add-on");
+  //   } finally {
+  //     setFormLoading(false);
+  //   }
+  // };
 
   const handleDeleteAddon = async (id: number) => {
     if (!window.confirm("Are you sure you want to delete this add-on?")) return;
