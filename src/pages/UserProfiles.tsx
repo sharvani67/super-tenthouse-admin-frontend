@@ -4,7 +4,7 @@ import axios from 'axios';
 import BASE_URL from '@/Config/Api';
 import Navbar from '@/components/Navbar';
 import UsersTable from '@/components/UserTable';
-// import UserFormModal from '@/components/UserForm';
+import UserFormModal from '@/components/UserForm';
 
 interface User {
   id: number;
@@ -159,13 +159,13 @@ const AdminUsersProfile = () => {
         />
       </div>
 
-      {/* <UserFormModal
+      <UserFormModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onSubmit={editingUser ? handleEditUser : handleAddUser}
         initialData={editingUser}
         loading={formLoading}
-      /> */}
+      />
     </div>
   );
 };
