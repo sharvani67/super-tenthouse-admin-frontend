@@ -132,8 +132,6 @@ const STATUS_OPTIONS = ['all', 'pending', 'approved', 'processing', 'completed',
 // COMPONENT
 // ============================================================
 
-
-
 const SalesmanOrders: React.FC = () => {
   const [filterType, setFilterType] = useState<FilterType>('salesman');
   const [customerOrders, setCustomerOrders] = useState<UnifiedOrder[]>([]);
@@ -155,13 +153,18 @@ const SalesmanOrders: React.FC = () => {
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user?.id) setSalesmanId(user.id);
+    if (user?.id) {
+      setSalesmanId(user.id);
+    }
   }, []);
 
+  // Fetch all orders on initial load when salesmanId is available
   useEffect(() => {
-    fetchOrders();
+    if (salesmanId) {
+      fetchAllOrders();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterType, salesmanId]);
+  }, [salesmanId]);
 
   const authHeaders = () => {
     const token = localStorage.getItem('token');
@@ -218,11 +221,48 @@ const SalesmanOrders: React.FC = () => {
     return enrichedOrders;
   };
 
+  // New function to fetch all orders regardless of filter
+  const fetchAllOrders = async () => {
+    setLoading(true);
+    try {
+      const headers = authHeaders();
+      const salesmanQuery = salesmanId ? `?salesman_id=${salesmanId}` : '';
+
+      // Fetch all three types of orders in parallel
+      const [customerRes, adminRes, salesmanRes] = await Promise.all([
+        axios.get(`${BASE_URL}/api/customer-orders/`, { headers }),
+        axios.get(`${BASE_URL}/api/orders/`, { headers }),
+        axios.get(`${BASE_URL}/api/salesman-orders/${salesmanQuery}`, { headers })
+      ]);
+
+      // Process customer orders
+      let customerOrdersData = normalizeList(customerRes.data?.data, 'customer');
+      customerOrdersData = await enrichOrdersWithAddress(customerOrdersData);
+      setCustomerOrders(customerOrdersData);
+
+      // Process admin orders
+      let adminOrdersData = normalizeList(adminRes.data?.data, 'admin');
+      adminOrdersData = await enrichOrdersWithAddress(adminOrdersData);
+      setAdminOrders(adminOrdersData);
+
+      // Process salesman orders
+      let salesmanOrdersData = normalizeList(salesmanRes.data?.data, 'salesman');
+      salesmanOrdersData = await enrichOrdersWithAddress(salesmanOrdersData);
+      setSalesmanOrders(salesmanOrdersData);
+
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      alert('Failed to fetch orders');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Original fetchOrders function kept for compatibility
   const fetchOrders = async () => {
     setLoading(true);
     try {
       const headers = authHeaders();
-
       const salesmanQuery = salesmanId ? `?salesman_id=${salesmanId}` : '';
 
       let customerOrdersData: UnifiedOrder[] = [];
@@ -308,7 +348,7 @@ const SalesmanOrders: React.FC = () => {
         const updated = { ...response.data.data, items: normalizeItems(response.data.data.items), _source: source };
         setForSource(prev => prev.map(o => (o.id === orderId ? { ...o, ...updated } : o)));
       } else if (response.data?.success) {
-        await fetchOrders();
+        await fetchAllOrders();
       } else {
         throw new Error('Invalid response from server');
       }
@@ -333,7 +373,7 @@ const SalesmanOrders: React.FC = () => {
       const headers = authHeaders();
       const endpoint = `${BASE_URL}/api/${SOURCE_META[order._source].endpoint}/${order.id}`;
       await axios.delete(endpoint, { headers });
-      await fetchOrders();
+      await fetchAllOrders();
       alert('Order deleted successfully');
     } catch (error) {
       console.error('Error deleting order:', error);

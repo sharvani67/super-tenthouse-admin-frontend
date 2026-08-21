@@ -129,12 +129,7 @@ const SOURCE_META: Record<OrderSource, { label: string; endpoint: string; badge:
 const STATUS_OPTIONS = ['all', 'pending', 'approved', 'processing', 'completed', 'rejected', 'cancelled'];
 
 // ============================================================
-// COMPONENT
-// ============================================================
-
-
-// ============================================================
-// STABLE IMAGE COMPONENT - Add this after imports
+// STABLE IMAGE COMPONENT
 // ============================================================
 
 const StableProductImage: React.FC<{
@@ -209,6 +204,9 @@ const StableProductImage: React.FC<{
   );
 };
 
+// ============================================================
+// MAIN COMPONENT
+// ============================================================
 
 const AdminOrders: React.FC = () => {
   const [filterType, setFilterType] = useState<FilterType>('customer');
@@ -227,10 +225,11 @@ const AdminOrders: React.FC = () => {
   // Cache for customer data to avoid repeated API calls
   const [customerCache, setCustomerCache] = useState<Map<number, Customer>>(new Map());
 
+  // Fetch all orders on initial load only
   useEffect(() => {
-    fetchOrders();
+    fetchAllOrders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterType]);
+  }, []);
 
   const authHeaders = () => {
     const token = localStorage.getItem('token');
@@ -287,6 +286,43 @@ const AdminOrders: React.FC = () => {
     return enrichedOrders;
   };
 
+  // New function to fetch all orders regardless of filter
+  const fetchAllOrders = async () => {
+    setLoading(true);
+    try {
+      const headers = authHeaders();
+
+      // Fetch all three types of orders in parallel
+      const [customerRes, adminRes, salesmanRes] = await Promise.all([
+        axios.get(`${BASE_URL}/api/customer-orders/`, { headers }),
+        axios.get(`${BASE_URL}/api/orders/`, { headers }),
+        axios.get(`${BASE_URL}/api/salesman-orders/`, { headers })
+      ]);
+
+      // Process customer orders
+      let customerOrdersData = normalizeList(customerRes.data?.data, 'customer');
+      customerOrdersData = await enrichOrdersWithAddress(customerOrdersData);
+      setCustomerOrders(customerOrdersData);
+
+      // Process admin orders
+      let adminOrdersData = normalizeList(adminRes.data?.data, 'admin');
+      adminOrdersData = await enrichOrdersWithAddress(adminOrdersData);
+      setAdminOrders(adminOrdersData);
+
+      // Process salesman orders
+      let salesmanOrdersData = normalizeList(salesmanRes.data?.data, 'salesman');
+      salesmanOrdersData = await enrichOrdersWithAddress(salesmanOrdersData);
+      setSalesmanOrders(salesmanOrdersData);
+
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      alert('Failed to fetch orders');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Original fetchOrders function kept for compatibility
   const fetchOrders = async () => {
     setLoading(true);
     try {
@@ -299,7 +335,6 @@ const AdminOrders: React.FC = () => {
       if (filterType === 'all' || filterType === 'customer') {
         const res = await axios.get(`${BASE_URL}/api/customer-orders/`, { headers });
         customerOrdersData = normalizeList(res.data?.data, 'customer');
-        // Enrich with address data
         customerOrdersData = await enrichOrdersWithAddress(customerOrdersData);
         setCustomerOrders(customerOrdersData);
       }
@@ -376,7 +411,7 @@ const AdminOrders: React.FC = () => {
         const updated = { ...response.data.data, items: normalizeItems(response.data.data.items), _source: source };
         setForSource(prev => prev.map(o => (o.id === orderId ? { ...o, ...updated } : o)));
       } else if (response.data?.success) {
-        await fetchOrders();
+        await fetchAllOrders();
       } else {
         throw new Error('Invalid response from server');
       }
@@ -401,7 +436,7 @@ const AdminOrders: React.FC = () => {
       const headers = authHeaders();
       const endpoint = `${BASE_URL}/api/${SOURCE_META[order._source].endpoint}/${order.id}`;
       await axios.delete(endpoint, { headers });
-      await fetchOrders();
+      await fetchAllOrders();
       alert('Order deleted successfully');
     } catch (error) {
       console.error('Error deleting order:', error);
@@ -788,24 +823,24 @@ const AdminOrders: React.FC = () => {
                         )}
                       </td>
                       <td className="px-6 py-4">
-  <div className="flex items-center gap-1">
-    <span className="text-sm font-medium">{order.items?.length || 0}</span>
-    <span className="text-xs text-gray-500">items</span>
-  </div>
-  <div className="flex items-center gap-1 mt-1">
-    {order.items?.slice(0, 3).map((item: OrderItem, idx: number) => (
-      <StableProductImage
-        key={`${order.id}-item-${idx}`}
-        imageUrl={item.image || item.image_url}
-        alt={item.name || item.product_name || 'Product'}
-        className="w-8 h-8 rounded border overflow-hidden bg-gray-100 flex-shrink-0"
-      />
-    ))}
-    {(order.items?.length || 0) > 3 && (
-      <span className="text-xs text-gray-500 ml-1">+{(order.items?.length || 0) - 3}</span>
-    )}
-  </div>
-</td>
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-medium">{order.items?.length || 0}</span>
+                          <span className="text-xs text-gray-500">items</span>
+                        </div>
+                        <div className="flex items-center gap-1 mt-1">
+                          {order.items?.slice(0, 3).map((item: OrderItem, idx: number) => (
+                            <StableProductImage
+                              key={`${order.id}-item-${idx}`}
+                              imageUrl={item.image || item.image_url}
+                              alt={item.name || item.product_name || 'Product'}
+                              className="w-8 h-8 rounded border overflow-hidden bg-gray-100 flex-shrink-0"
+                            />
+                          ))}
+                          {(order.items?.length || 0) > 3 && (
+                            <span className="text-xs text-gray-500 ml-1">+{(order.items?.length || 0) - 3}</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-semibold text-[#0c2d67]">
                           ₹{formatPrice(order.grand_total || 0).toFixed(2)}
