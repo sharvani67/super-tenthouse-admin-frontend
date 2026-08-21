@@ -276,7 +276,7 @@ const SalesmanDashboard: React.FC = () => {
               </div>
             ) : (
               stats.recentOrders.map((order: any) => (
-                <div key={order.id} className="px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => navigate(`/salesman/order/${order.id}`)}>
+                <div key={order.id} className="px-6 py-4 hover:bg-gray-50 transition-colors" >
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium text-gray-900">#{order.order_number}</p>
@@ -316,13 +316,13 @@ const SalesmanDashboard: React.FC = () => {
               <RefreshCw size={24} className="mx-auto text-[#0c2d67] mb-2" />
               <p className="text-sm font-medium text-gray-700">Refresh Data</p>
             </button>
-            <button
+            {/* <button
               onClick={() => navigate('/salesman/profile')}
               className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition-shadow text-center hover:bg-gray-50"
             >
               <User size={24} className="mx-auto text-[#0c2d67] mb-2" />
               <p className="text-sm font-medium text-gray-700">My Profile</p>
-            </button>
+            </button> */}
             <button
               onClick={handleLogout}
               className="bg-red-50 rounded-xl shadow-lg p-4 hover:shadow-xl transition-shadow text-center border border-red-100"

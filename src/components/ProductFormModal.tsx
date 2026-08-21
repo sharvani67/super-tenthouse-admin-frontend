@@ -654,66 +654,75 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
     fetchCategories();
   }, []);
 
-  useEffect(() => {
-    if (initialData) {
-      setForm({
-        product_category_id: initialData.product_category_id || initialData.category_id || "",
-        product_name: initialData.product_name || "",
-        material: initialData.material || "",
-        color: initialData.color || "",
-        available_stock: initialData.available_stock || "",
-        rating: initialData.rating || "",
-        price: initialData.price || initialData.original_price || "",
-        discount: initialData.discount || "",
-        product_description: initialData.product_description || initialData.description || "",
-        dimensions: initialData.dimensions || "",
-        product_code: initialData.product_code || "",
-        product_brand: initialData.product_brand || "",
-        weight: initialData.weight || "",
-        specifications: typeof initialData.specifications === 'object' 
-          ? JSON.stringify(initialData.specifications) 
-          : initialData.specifications || "",
-        warranty: initialData.warranty || "",
-        care_instructions: initialData.care_instructions || "",
-        is_active: initialData.is_active !== undefined ? String(initialData.is_active) : "1",
-      });
+// ProductFormModal.tsx
+useEffect(() => {
+  if (initialData) {
+    setForm({
+      product_category_id: initialData.product_category_id || initialData.category_id || "",
+      product_name: initialData.product_name || "",
+      material: initialData.material || "",
+      color: initialData.color || "",
+      available_stock: initialData.available_stock || "",
+      rating: initialData.rating || "",
+      price: initialData.price || initialData.original_price || "",
+      discount: initialData.discount || "",
+      product_description: initialData.product_description || initialData.description || "",
+      dimensions: initialData.dimensions || "",
+      product_code: initialData.product_code || "",
+      product_brand: initialData.product_brand || "",
+      weight: initialData.weight || "",
+      specifications: typeof initialData.specifications === 'object' 
+        ? JSON.stringify(initialData.specifications) 
+        : initialData.specifications || "",
+      warranty: initialData.warranty || "",
+      care_instructions: initialData.care_instructions || "",
+      is_active: initialData.is_active !== undefined ? String(initialData.is_active) : "1",
+    });
 
-      setSelectedColors(parseJSONArray(initialData.colors));
-      setSizes(parseJSONArray(initialData.sizes));
+    setSelectedColors(parseJSONArray(initialData.colors));
+    setSizes(parseJSONArray(initialData.sizes));
 
-      const colorImagesData = parseColorImages(initialData.color_images);
+    const colorImagesData = parseColorImages(initialData.color_images);
 
-      setExistingImages(initialData.images || []);
-      setImagePreviews(initialData.images ? initialData.images.map((img: string) => `${BASE_URL}/${img}`) : []);
-    } else {
-      setForm({
-        product_category_id: "",
-        product_name: "",
-        material: "",
-        color: "",
-        available_stock: "",
-        rating: "",
-        price: "",
-        discount: "",
-        product_description: "",
-        dimensions: "",
-        product_code: "",
-        product_brand: "",
-        weight: "",
-        specifications: "",
-        warranty: "",
-        care_instructions: "",
-        is_active: "1",
-      });
-      setSelectedColors([]);
-      setSizes([]);
-      setImages([]);
-      setExistingImages([]);
-      setImagePreviews([]);
-      setColorImages({});
-      setColorImagePreviews({});
-    }
-  }, [initialData]);
+    setExistingImages(initialData.images || []);
+    setImagePreviews(initialData.images ? initialData.images.map((img: string) => `${BASE_URL}/${img}`) : []);
+  } else {
+    // Reset form for new product
+    resetForm();
+  }
+}, [initialData, isOpen]); // ✅ Add isOpen here
+
+// Create a reset function for cleaner code
+const resetForm = () => {
+  setForm({
+    product_category_id: "",
+    product_name: "",
+    material: "",
+    color: "",
+    available_stock: "",
+    rating: "",
+    price: "",
+    discount: "",
+    product_description: "",
+    dimensions: "",
+    product_code: "",
+    product_brand: "",
+    weight: "",
+    specifications: "",
+    warranty: "",
+    care_instructions: "",
+    is_active: "1",
+  });
+  setSelectedColors([]);
+  setSizes([]);
+  setImages([]);
+  setExistingImages([]);
+  setImagePreviews([]);
+  setColorImages({});
+  setColorImagePreviews({});
+  setSelectedColorForImages("");
+  setShowColorPicker(false);
+};
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -912,7 +921,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
               />
             </div>
 
-            {/* Product Code */}
+            {/* Product Code - NO LONGER REQUIRED */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Product Code (SKU)
@@ -968,10 +977,10 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
               />
             </div>
 
-            {/* Price */}
+            {/* Price - NO LONGER REQUIRED */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Price (₹) *
+                Price (₹)
               </label>
               <input
                 type="number"
@@ -980,7 +989,6 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
                 value={form.price}
                 onChange={(e) => setForm({ ...form, price: e.target.value })}
-                required
               />
             </div>
 
@@ -999,10 +1007,10 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
               />
             </div>
 
-            {/* Available Stock */}
+            {/* Available Stock - NO LONGER REQUIRED */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Stock *
+                Stock
               </label>
               <input
                 type="number"
@@ -1010,7 +1018,6 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
                 value={form.available_stock}
                 onChange={(e) => setForm({ ...form, available_stock: e.target.value })}
-                required
               />
             </div>
 
@@ -1045,7 +1052,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
             {/* ─── DESCRIPTION - NEW SECTION ────────────────────────────────── */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description *
+                Description
               </label>
               <textarea
                 rows={5}
@@ -1053,7 +1060,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0c2d67] focus:border-transparent"
                 value={form.product_description}
                 onChange={(e) => setForm({ ...form, product_description: e.target.value })}
-                required
+               
               />
               <p className="text-xs text-gray-400 mt-1">
                 This description will be displayed on the product page in the app.

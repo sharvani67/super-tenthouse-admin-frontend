@@ -401,7 +401,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
               ) : (
                 stats.recentOrders.map((order: any) => (
-                  <div key={order.id} className="px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => navigate(`/admin/order/${order.id}`)}>
+                  <div key={order.id} className="px-6 py-4 hover:bg-gray-50 transition-colors " >
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium text-gray-900">#{order.order_number}</p>
@@ -468,7 +468,7 @@ const AdminDashboard: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             <button
-              onClick={() => navigate('/admin/products')}
+              onClick={() => navigate('/admin-products')}
               className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition-shadow text-center hover:bg-gray-50"
             >
               <Package size={24} className="mx-auto text-[#0c2d67] mb-2" />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import BASE_URL from '@/Config/Api';
@@ -131,6 +131,84 @@ const STATUS_OPTIONS = ['all', 'pending', 'approved', 'processing', 'completed',
 // ============================================================
 // COMPONENT
 // ============================================================
+
+
+// ============================================================
+// STABLE IMAGE COMPONENT - Add this after imports
+// ============================================================
+
+const StableProductImage: React.FC<{
+  imageUrl?: string;
+  alt?: string;
+  className?: string;
+  fallbackText?: string;
+}> = ({ imageUrl, alt = 'Product', className = 'w-8 h-8 rounded border overflow-hidden bg-gray-100 flex-shrink-0', fallbackText }) => {
+  const [hasError, setHasError] = useState(false);
+
+  // Check if image is valid
+  const isValidImage = useMemo(() => {
+    if (!imageUrl) return false;
+    const value = imageUrl.trim();
+    if (!value) return false;
+    const invalidValues = ['null', 'undefined', 'n/a', 'na', 'no-image', ''];
+    return !invalidValues.includes(value.toLowerCase());
+  }, [imageUrl]);
+
+  // Get the full image URL using BASE_URL
+  const fullImageUrl = useMemo(() => {
+    if (!isValidImage || hasError) return null;
+    
+    const path = imageUrl?.trim() || '';
+    
+    // Handle different URL formats
+    if (path.startsWith('uploads/')) return `${BASE_URL}/${path}`;
+    if (path.includes('trycloudflare.com')) {
+      const match = path.match(/\/uploads\/.+$/);
+      if (match) return `${BASE_URL}${match[0]}`;
+    }
+    if (path.includes('localhost:5000')) return path;
+    if (path.startsWith('/uploads/')) return `${BASE_URL}${path}`;
+    if (path.startsWith('http')) return path;
+    return `${BASE_URL}/uploads/products/${path}`;
+  }, [isValidImage, hasError, imageUrl]);
+
+  // Reset error state when imageUrl changes
+  useEffect(() => {
+    setHasError(false);
+  }, [imageUrl]);
+
+  const handleError = useCallback(() => {
+    // Only set error once
+    if (!hasError) {
+      setHasError(true);
+    }
+  }, [hasError]);
+
+  // If no valid image or error, show placeholder
+  if (!isValidImage || hasError || !fullImageUrl) {
+    return (
+      <div className={className}>
+        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 bg-gray-100">
+          {fallbackText || alt?.charAt(0).toUpperCase() || '?'}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={className}>
+      <img
+        src={fullImageUrl}
+        alt={alt}
+        className="w-full h-full object-cover"
+        onError={handleError}
+        loading="lazy"
+        style={{ display: 'block' }}
+      />
+    </div>
+  );
+};
+
 
 const AdminOrders: React.FC = () => {
   const [filterType, setFilterType] = useState<FilterType>('customer');
@@ -363,15 +441,15 @@ const AdminOrders: React.FC = () => {
 
   const getImageUrl = (imagePath?: string) => {
     if (!imagePath) return '/placeholder-image.jpg';
-    if (imagePath.startsWith('uploads/')) return `http://localhost:5000/${imagePath}`;
+    if (imagePath.startsWith('uploads/')) return `${BASE_URL}/${imagePath}`;
     if (imagePath.includes('trycloudflare.com')) {
       const match = imagePath.match(/\/uploads\/.+$/);
-      if (match) return `http://localhost:5000${match[0]}`;
+      if (match) return `${BASE_URL}${match[0]}`;
     }
     if (imagePath.includes('localhost:5000')) return imagePath;
-    if (imagePath.startsWith('/uploads/')) return `http://localhost:5000${imagePath}`;
+    if (imagePath.startsWith('/uploads/')) return `${BASE_URL}${imagePath}`;
     if (imagePath.startsWith('http')) return imagePath;
-    return `http://localhost:5000/uploads/products/${imagePath}`;
+    return `${BASE_URL}/uploads/products/${imagePath}`;
   };
 
   const getStatusColor = (status?: string) => {
@@ -710,35 +788,24 @@ const AdminOrders: React.FC = () => {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm font-medium">{order.items?.length || 0}</span>
-                          <span className="text-xs text-gray-500">items</span>
-                        </div>
-                        <div className="flex items-center gap-1 mt-1">
-                          {order.items?.slice(0, 3).map((item: OrderItem, idx: number) => {
-                            const imageUrl = item.image || item.image_url;
-                            return (
-                              <div key={idx} className="w-8 h-8 rounded border overflow-hidden bg-gray-100">
-                                {imageUrl ? (
-                                  <img
-                                    src={getImageUrl(imageUrl)}
-                                    alt={item.name || item.product_name}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.jpg'; }}
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-400 bg-gray-100">
-                                    {item.name?.charAt(0) || item.product_name?.charAt(0) || '?'}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                          {(order.items?.length || 0) > 3 && (
-                            <span className="text-xs text-gray-500 ml-1">+{(order.items?.length || 0) - 3}</span>
-                          )}
-                        </div>
-                      </td>
+  <div className="flex items-center gap-1">
+    <span className="text-sm font-medium">{order.items?.length || 0}</span>
+    <span className="text-xs text-gray-500">items</span>
+  </div>
+  <div className="flex items-center gap-1 mt-1">
+    {order.items?.slice(0, 3).map((item: OrderItem, idx: number) => (
+      <StableProductImage
+        key={`${order.id}-item-${idx}`}
+        imageUrl={item.image || item.image_url}
+        alt={item.name || item.product_name || 'Product'}
+        className="w-8 h-8 rounded border overflow-hidden bg-gray-100 flex-shrink-0"
+      />
+    ))}
+    {(order.items?.length || 0) > 3 && (
+      <span className="text-xs text-gray-500 ml-1">+{(order.items?.length || 0) - 3}</span>
+    )}
+  </div>
+</td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-semibold text-[#0c2d67]">
                           ₹{formatPrice(order.grand_total || 0).toFixed(2)}

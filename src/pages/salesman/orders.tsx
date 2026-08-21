@@ -132,6 +132,8 @@ const STATUS_OPTIONS = ['all', 'pending', 'approved', 'processing', 'completed',
 // COMPONENT
 // ============================================================
 
+
+
 const SalesmanOrders: React.FC = () => {
   const [filterType, setFilterType] = useState<FilterType>('salesman');
   const [customerOrders, setCustomerOrders] = useState<UnifiedOrder[]>([]);
@@ -145,10 +147,10 @@ const SalesmanOrders: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [updatingOrderId, setUpdatingOrderId] = useState<number | null>(null);
   const [salesmanId, setSalesmanId] = useState<number | null>(null);
-  
+
   // Cache for customer data to avoid repeated API calls
   const [customerCache, setCustomerCache] = useState<Map<number, Customer>>(new Map());
-  
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -176,7 +178,7 @@ const SalesmanOrders: React.FC = () => {
     try {
       const headers = authHeaders();
       const response = await axios.get(`${BASE_URL}/api/customers/details/${customerId}`, { headers });
-      
+
       if (response.data?.success && response.data?.data) {
         const customerData = response.data.data;
         // Update cache
@@ -371,15 +373,50 @@ const SalesmanOrders: React.FC = () => {
 
   const getImageUrl = (imagePath?: string) => {
     if (!imagePath) return '/placeholder-image.jpg';
-    if (imagePath.startsWith('uploads/')) return `http://localhost:5000/${imagePath}`;
+    if (imagePath.startsWith('uploads/')) return `${BASE_URL}/${imagePath}`;
     if (imagePath.includes('trycloudflare.com')) {
       const match = imagePath.match(/\/uploads\/.+$/);
-      if (match) return `http://localhost:5000${match[0]}`;
+      if (match) return `${BASE_URL}${match[0]}`;
     }
     if (imagePath.includes('localhost:5000')) return imagePath;
-    if (imagePath.startsWith('/uploads/')) return `http://localhost:5000${imagePath}`;
+    if (imagePath.startsWith('/uploads/')) return `${BASE_URL}${imagePath}`;
     if (imagePath.startsWith('http')) return imagePath;
-    return `http://localhost:5000/uploads/products/${imagePath}`;
+    return `${BASE_URL}/uploads/products/${imagePath}`;
+  };
+
+  const ProductThumbnail: React.FC<{
+    image?: string;
+    name?: string;
+  }> = ({ image, name }) => {
+    const [imageError, setImageError] = useState(false);
+
+    const normalizedImage = image?.trim();
+
+    const hasImage =
+      !!normalizedImage &&
+      normalizedImage.toLowerCase() !== 'null' &&
+      normalizedImage.toLowerCase() !== 'undefined';
+
+    if (!hasImage || imageError) {
+      return (
+        <div className="w-8 h-8 rounded border bg-gray-100 flex items-center justify-center">
+          <span className="text-[8px] text-gray-400">
+            {name?.charAt(0)?.toUpperCase() || 'N/A'}
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-8 h-8 rounded border overflow-hidden bg-gray-100">
+        <img
+          src={getImageUrl(normalizedImage)}
+          alt={name || 'Product'}
+          className="w-full h-full object-cover"
+          onError={() => setImageError(true)}
+        />
+      </div>
+    );
   };
 
   const getStatusColor = (status?: string) => {
@@ -482,11 +519,11 @@ const SalesmanOrders: React.FC = () => {
           className={`text-xs border rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#0c2d67] disabled:opacity-50 min-w-[100px]
             ${currentStatus === 'pending' ? 'border-yellow-400 bg-yellow-50' :
               currentStatus === 'approved' ? 'border-green-400 bg-green-50' :
-              currentStatus === 'completed' ? 'border-purple-400 bg-purple-50' :
-              currentStatus === 'processing' ? 'border-blue-400 bg-blue-50' :
-              currentStatus === 'rejected' ? 'border-red-400 bg-red-50' :
-              currentStatus === 'cancelled' ? 'border-red-400 bg-red-50' :
-              'border-gray-300 bg-gray-50'
+                currentStatus === 'completed' ? 'border-purple-400 bg-purple-50' :
+                  currentStatus === 'processing' ? 'border-blue-400 bg-blue-50' :
+                    currentStatus === 'rejected' ? 'border-red-400 bg-red-50' :
+                      currentStatus === 'cancelled' ? 'border-red-400 bg-red-50' :
+                        'border-gray-300 bg-gray-50'
             }`}
         >
           <option value="pending">Pending</option>
@@ -625,9 +662,8 @@ const SalesmanOrders: React.FC = () => {
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
-                  className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                    statusFilter === status ? 'bg-[#0c2d67] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className={`px-3 py-2 rounded-lg text-sm transition-colors ${statusFilter === status ? 'bg-[#0c2d67] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
                 >
                   {status.charAt(0).toUpperCase() + status.slice(1)}
                 </button>
@@ -719,6 +755,7 @@ const SalesmanOrders: React.FC = () => {
                         <div className="flex items-center gap-1 mt-1">
                           {order.items?.slice(0, 3).map((item: OrderItem, idx: number) => {
                             const imageUrl = item.image || item.image_url;
+
                             return (
                               <div key={idx} className="w-8 h-8 rounded border overflow-hidden bg-gray-100">
                                 {imageUrl ? (
@@ -726,7 +763,9 @@ const SalesmanOrders: React.FC = () => {
                                     src={getImageUrl(imageUrl)}
                                     alt={item.name || item.product_name}
                                     className="w-full h-full object-cover"
-                                    onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.jpg'; }}
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                                    }}
                                   />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-400 bg-gray-100">
